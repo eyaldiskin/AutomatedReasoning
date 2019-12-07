@@ -1,22 +1,20 @@
 import unittest
 import SAT
+import boolean
+
+algebra = boolean.BooleanAlgebra()
 
 
 class TestSATMethods(unittest.TestCase):
 
-    def test_1(self):
-        self.assertEqual('foo'.upper(), 'FOO')
+    def test_Preprocess_1(self):
+        x, y = algebra.symbols("x", "y")
+        self.assertTrue(SAT.preproccess(x & y) == (x & y))
 
-    def test_2(self):
-        self.assertTrue('FOO'.isupper())
-        self.assertFalse('Foo'.isupper())
+    def test_Preprocess_2(self):
+        x, y = algebra.symbols("x", "y")
+        self.assertTrue(SAT.preproccess((x | ~x) & (x | y)) == (x | y))
 
-    def test_3(self):
-        s = 'hello world'
-        self.assertEqual(s.split(), ['hello', 'world'])
-        # check that s.split fails when the separator is not a string
-        with self.assertRaises(TypeError):
-            s.split(2)
 
 
 if __name__ == '__main__':
