@@ -16,7 +16,12 @@ def preproccess(formula: boolean.Expression):
             arg = arg.simplify()
             if not(arg == algebra.TRUE):
                 new_args.append(arg)
-        return boolean.AND(new_args)
+
+        if(len(new_args) == 0):
+            return algebra.TRUE
+        if(len(new_args)>1):
+            return boolean.AND(*new_args)
+        return new_args[0]
     return formula
 
 
