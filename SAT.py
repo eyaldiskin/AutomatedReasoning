@@ -1,4 +1,6 @@
-import boolean
+import boolean.boolean as boolean
+
+
 
 algebra = boolean.BooleanAlgebra()
 
@@ -17,3 +19,5 @@ def tseitlin(formula: boolean.Expression):
     return the tseitlin transformation of that formula
     """
     pass
+
+
