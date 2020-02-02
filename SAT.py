@@ -1,33 +1,28 @@
-import boolean.boolean as boolean
+class SAT:
+    def __init__(self):
+        self.M = "M"
+        self.F = "F"
 
+    # use DLIS heuristics
+    def _decide(self):
+        pass
 
-algebra = boolean.BooleanAlgebra()
+    def _learn(self):
+        pass
 
+    # use watch literals
+    def _propagate(self):
+        pass
 
-def preproccess(formula: boolean.Expression):
-    """
-    gets a formula in cnf form
-    returns an equivelant formula without redundant clauses
-    """
-    if(type(formula) == boolean.AND):
-        args = formula.args
-        new_args = []
-        for arg in args:
-            arg = arg.simplify()
-            if not(arg == algebra.TRUE):
-                new_args.append(arg)
+    def _backtrack(self):
+        pass
 
-        if(len(new_args) == 0):
-            return algebra.TRUE
-        if(len(new_args)>1):
-            return boolean.AND(*new_args)
-        return new_args[0]
-    return formula
+    def _conflict(self):
+        pass
 
+    # conflict analysis (UIP finder)
+    def _explain(self):
+        pass
 
-def tseitlin(formula: boolean.Expression):
-    """
-    gets a boolean formula
-    return the tseitlin transformation of that formula
-    """
-    pass
+    def _backjump(self):
+        pass
