@@ -24,7 +24,7 @@ class Formula():
             self.formulas = []
         else:
             self.formulas = formulas
-            variables = {}
+            variables = set()
             for formula in formulas:
                 variables = variables.union(formula.varList)
             self.variables = variables
@@ -143,6 +143,49 @@ class Formula():
         self.variables = tseitlinFormula.variables
         for formula in self.formulas:
             formula.toCNF()
+        self.flatten()
+
+    def isRedundantFormula(self):
+        """
+        should be run on CNF clauses only, unexpected behavior overwise
+        """
+        varMap = {}
+        for literal in self.formulas:
+            if literal.type is FT.VAR:
+                if literal.name in varMap:
+                    if varMap[literal.name] is False:
+                        return True
+                else:
+                    varMap[literal.name] = True
+            else:
+                name = literal.formulas[0].name
+                if literal.name in varMap:
+                    if varMap[literal.name] is True:
+                        return True
+                else:
+                    varMap[literal.name] = False
+        return False
+
+    def removeRedundantLiterals(self):
+        """
+        should be run on CNF clauses only, unexpected behavior overwise
+        works only after removal of redundant formulas
+        """
+        varSet = set()
+        for index, literal in reversed(list(enumerate(self.formulas))):
+            if literal.type is FT.VAR:
+                if literal.name in varSet:
+                    del self.formulas[index]
+                else:
+                    varSet.add(literal.name)
+            else:
+                if literal.formulas[0].name in varSet:
+                    del self.formulas[index]
+                else:
+                    varSet.add(literal.formulas[0].name)
 
     def preprocess(self):
-        pass
+        self.toTseitlin()
+        self.formulas = [formula in self.formulas if not formula.isRedundant()]
+        for clause in self.formulas:
+            clause.removeRedundantLiterals()
