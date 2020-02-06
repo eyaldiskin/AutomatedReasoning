@@ -1,4 +1,5 @@
 from enum import Enum
+from helper import powerset
 
 
 class FT(Enum):
@@ -72,22 +73,22 @@ class Formula():
 
     def toCNF(self):
         self.toNNF()
-        self.distributeAndOverOr()
+        self.distributeOrOverAnd()
         self.flatten()
 
     def eliminateImplications(self):
-    """
-    convert to equivilant formula without IMPLIES and IFF 
-    """
-    if self.type is FT.IFF:
-        self.type = FT.AND
-        self.formulas = [self.formulas[0] <= self.formulas[1],
-                         self.formulas[1] <= self.formulas[0]]
-    for formula in self.formulas:
-        formula.eliminateImplications()
-    if self.type is FT.IMPLIES:
-        self.type = FT.OR
-        self.formulas = [-self.formulas[0], self.formulas[1]]
+        """
+        convert to equivilant formula without IMPLIES and IFF
+        """
+        if self.type is FT.IFF:
+            self.type = FT.AND
+            self.formulas = [self.formulas[0] <= self.formulas[1],
+                             self.formulas[1] <= self.formulas[0]]
+        for formula in self.formulas:
+            formula.eliminateImplications()
+        if self.type is FT.IMPLIES:
+            self.type = FT.OR
+            self.formulas = [-self.formulas[0], self.formulas[1]]
 
     def pushAndEliminateNegations(self):
         if self.type is FT.NEG:
@@ -106,13 +107,18 @@ class Formula():
         for formula in self.formulas:
             formula.pushAndEliminateNegations()
 
-    # might be the wrong name for function
-    def distributeAndOverOr(self):
+    def distributeOrOverAnd(self):
         if self.type == FT.OR:
             for index, formula in enumerate(self.formulas):
                 if formula.type is FT.AND:
                     self.type = FT.AND
-                    self.formulas = [inner | self.formulas.pop(index) for inner in formula[]]
+                    self.formulas.pop(index)
+                    if len(self.formulas) == 1:
+                        self.formulas = [self.formulas[0] |
+                                         inner for inner in formula.formulas]
+                    else:
+                        self.formulas = [
+                            Formula(FT.AND, formulas=self.formulas) | inner for inner in formula.formulas]
                     break
         for formula in self.formulas:
             formula.distributeAndOverOr()
@@ -122,6 +128,8 @@ class Formula():
         formulas = []
 
         def tseiltinRec(formula: Formula):
+            nonlocal tseitlinIndex
+            nonlocal formulas
             if not formula.isLiteral():
                 if not hasattr(formula, "tseitlinVar"):
                     formula.tseitlinVar = Formula(
@@ -138,7 +146,7 @@ class Formula():
         tseiltinRec(self)
         formulas.append(self.tseitlinVar)
         tseitlinFormula = Formula(FT.AND, formulas=formulas)
-        self.type = TF.AND
+        self.type = FT.AND
         self.formulas = tseitlinFormula.formulas
         self.variables = tseitlinFormula.variables
         for formula in self.formulas:
@@ -159,11 +167,11 @@ class Formula():
                     varMap[literal.name] = True
             else:
                 name = literal.formulas[0].name
-                if literal.name in varMap:
-                    if varMap[literal.name] is True:
+                if name in varMap:
+                    if varMap[name] is True:
                         return True
                 else:
-                    varMap[literal.name] = False
+                    varMap[name] = False
         return False
 
     def removeRedundantLiterals(self):
@@ -186,6 +194,43 @@ class Formula():
 
     def preprocess(self):
         self.toTseitlin()
-        self.formulas = [formula in self.formulas if not formula.isRedundant()]
+        self.formulas = [formula for formula in self.formulas if not formula.isRedundant()]
         for clause in self.formulas:
             clause.removeRedundantLiterals()
+
+    def applyAssignment(self, assignment: dict):
+        if self.type is FT.VAR:
+            return assignment[self.name]
+        if self.type is FT.NEG:
+            return not self.formulas[0].applyAssignment(assignment)
+        if self.type is FT.AND:
+            return all([formula.applyAssignment(assignment) for formula in self.formulas])
+        if self.type is FT.OR:
+            return any([formula.applyAssignment(assignment) for formula in self.formulas])
+        first = self.formulas[0].applyAssignment(assignment)
+        second = self.formulas[1].applyAssignment(assignment)
+        if self.type is FT.IFF:
+            return first == second
+        if self.type is FT.IMPLIES:
+            return not (first and not second)
+
+
+def areEquivalentFormulas(f1: Formula, f2: Formula):
+    if not f1.variables == f2.variables:
+        return False
+    for assignment in getAssignmentGenerator(f1):
+        if not f1.applyAssignment(assignment) == f2.applyAssignment(assignment):
+            return False
+    return True
+
+
+def getAssignmentGenerator(formula):
+    vars = list(formula.variables)
+    for subset in powerset(vars):
+        assignment = {}
+        for var in vars:
+            if var in subset:
+                assignment[var] = True
+            else:
+                assignment[var] = False
+        yield assignment
