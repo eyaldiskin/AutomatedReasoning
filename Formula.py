@@ -20,6 +20,7 @@ class Formula():
         if data is not None:
             self.data = data
         if(type == FT.VAR):
+            self.name = varName
             self.variables = {varName}
             self.tseitlin = tseitlin
             self.formulas = []
@@ -27,7 +28,7 @@ class Formula():
             self.formulas = formulas
             variables = set()
             for formula in formulas:
-                variables = variables.union(formula.varList)
+                variables = variables.union(formula.variables)
             self.variables = variables
 
     def __and__(self, other):
