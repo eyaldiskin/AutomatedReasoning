@@ -61,6 +61,12 @@ class Formula():
                     formulas += [formula]
         self.formulas = formulas
 
+    def getName(self):
+        """
+        should only be called if literal
+        """
+        return self.variables[0]
+
     def isLiteral(self):
         if self.type == FT.VAR:
             return True
@@ -195,7 +201,8 @@ class Formula():
 
     def preprocess(self):
         self.toTseitlin()
-        self.formulas = [formula for formula in self.formulas if not formula.isRedundant()]
+        self.formulas = [
+            formula for formula in self.formulas if not formula.isRedundant()]
         for clause in self.formulas:
             clause.removeRedundantLiterals()
 
@@ -214,6 +221,11 @@ class Formula():
             return first == second
         if self.type is FT.IMPLIES:
             return not (first and not second)
+
+    def applyPartialAssignment(self, assignment: dict):
+        if len(self .variables - assignment.keys) > 0:
+            return True
+        return self.applyAssignment(assignment)
 
 
 def areEquivalentFormulas(f1: Formula, f2: Formula):

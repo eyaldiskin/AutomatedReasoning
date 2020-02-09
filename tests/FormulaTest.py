@@ -26,6 +26,25 @@ class TestStringMethods(unittest.TestCase):
         explicit = -self.var1 | self.var2
         self.assertTrue(areEquivalentFormulas(implicit, explicit))
 
+    def test_flatten_1(self):
+        and1 = self.var0 & self.var1
+        and2 = self.var2 & and1
+        and2flat = self.var2 & and1
+        and2flat.flatten()
+        self.assertTrue(areEquivalentFormulas(and2, and2flat))
+        self.assertTrue(len(and2flat.formulas) is 3)
+
+    def test_flatten_2(self):
+        and1 = self.var0 & self.var1
+        and2 = self.var2 & self.var3
+        and3 = and1 & and2
+        and3flat = and1 & and2
+        and3flat.flatten()
+        self.assertTrue(areEquivalentFormulas(and3, and3flat))
+        self.assertTrue(len(and3flat.formulas) is 4)
+
+
+
 
 if __name__ == '__main__':
     unittest.main()
