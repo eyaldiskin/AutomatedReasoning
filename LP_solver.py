@@ -1,6 +1,44 @@
 import numpy as np
 np.seterr(divide='ignore', invalid='ignore')
 
+class eta_matrix:
+    def __init__(self, col_index, col_content):
+        self.col_content = col_content
+        self.col_index = col_index
+        self.size = len(col_content)
+
+    def BTRAN(self,result):
+        left_vector = np.array([result[i] for i in range(self.size)]).astype(float)
+        left_vector[self.col_index] = 0
+
+        left_vector[self.col_index] = (result[self.col_index] - (left_vector @ self.col_content))/self.col_content[self.col_index]
+        return left_vector
+
+    def FTRAN(self,result):
+        right_vector = np.zeros(len(result))
+        right_vector[self.col_index] = np.array(result[self.col_index]).astype(float)/self.col_content[self.col_index]
+        for j in range(self.size):
+            if j == self.col_index: continue
+            right_vector[j] = result[j] - self.col_content[j]*right_vector[self.col_index]
+
+        return right_vector
+
+    def invert(self):
+        self.col_content[self.col_index] = 1/self.col_content[self.col_index]
+        for i in range(self.size):
+            if i == self.col_index: continue
+            self.col_content[i] = -self.col_content[i]* self.col_content[self.col_index]
+
+
+
+    def __str__(self):
+        matrix = np.identity(self.size)
+        for i in range(self.size):
+            matrix[i,self.col_index] = self.col_content[i]
+
+        return str(matrix)
+
+
 class LP_solver:
 
     def __init__(self, A, b, c):
@@ -182,10 +220,17 @@ def main():
     c = np.array([1,3,0,0,0,0])'''
 
 
-    lp = LP_solver(A, b, c)
+    #lp = LP_solver(A, b, c)
     #lp._set_initial_feasible_solution(debug_flag)
-    lp.solve(debug_flag,lp._Dantzigs_rule)
-    lp.print_current_assignment()
+    #lp.solve(debug_flag,lp._Dantzigs_rule)
+    #lp.print_current_assignment()
+
+    eta = eta_matrix(1,[-3,3,15])
+    eta.invert()
+    print(eta)
+    eta.invert()
+    print(eta)
+
 
 if __name__ == "__main__":
     main()
