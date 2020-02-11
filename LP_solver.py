@@ -1,4 +1,5 @@
 import numpy as np
+np.seterr(divide='ignore', invalid='ignore')
 
 class LP_solver:
 
@@ -12,7 +13,7 @@ class LP_solver:
         self.X_B = np.arange(m,n)
         self.X_N = np.arange(0,m)
 
-        self.X_B_star = None
+        self.X_B_star = None # b[:].astype(float)
 
     def _FTRAN(self, entering_var):
         d = np.linalg.inv(self.A[:,self.X_B]) @ self.A[:,entering_var]
@@ -39,6 +40,10 @@ class LP_solver:
         pass
 
     def print_current_assignment(self):
+        if self.X_B_star is None:
+            print('no assignments are known')
+            return
+
         assignment = [0 for _ in range(self.A.shape[1])]
         for i in range(len(self.X_B)):
             assignment[self.X_B[i]] = self.X_B_star[i]
@@ -64,21 +69,47 @@ class LP_solver:
         if debug_flag:
             print(content)
 
-    def set_initial_feasible_solution(self):
+    def _set_initial_feasible_solution(self, debug_flag):
+
+        #if possible- just use the 0 assignment and finish
         if min(self.b) >= 0:
             self.X_B_star = self.b[:].astype(float)
+            return True
 
+        #if it's a non-trivial issue- solve the auxilery problem
         else:
-            new_col = np.full((self.A.shape[1],1), -1)
-            auxiliary = LP_solver(new_col.hstack(self.A), self.b, self.c)
-            auxiliary. X
+            print('please supply an initial assignment')
+            return False
 
+            '''x0_col = np.full((self.A.shape[0], 1), -1.)
+
+            new_obj = np.zeros(self.A.shape[1]+1)
+            new_obj[0] = -1
+
+
+            auxiliary = LP_solver(np.append(x0_col, self.A, axis=1), self.b, new_obj)
+            auxiliary.X_B_star = np.zeros(auxiliary.X_B.shape[0]).astype(float)
+            auxiliary.print_inner_state()
+
+            minimize = True
+            auxiliary.solve(debug_flag, auxiliary._Blands_rule,minimize)
+
+            self.X_B = auxiliary.X_B
+            self.X_B_star = auxiliary.X_B_star
+
+            X_N = []
+            for i in range(self.A.shape[1]):
+                if i+1 not in self.X_B:
+                    X_N += [i]
+
+            self.X_N = np.array(X_N)'''
 
     def solve(self, debug_flag, strategy):
-        np.seterr(divide='ignore', invalid='ignore')
 
-        if self.X_B_star == None:
-            self.set_initial_feasible_solution()
+        #make sure we start from an initial feasible assignment
+        if self.X_B_star is None:
+            if not self._set_initial_feasible_solution(debug_flag):
+                return
 
         iteration_number = 1
         while(True):
@@ -103,9 +134,10 @@ class LP_solver:
             d = self._FTRAN(entering_var) #TODO: write an actual FTRAN
             self._debug_print(('d= ', d), debug_flag)
 
+
             t_bounds = self.X_B_star / d
             for i in range(len(t_bounds)):
-                if t_bounds[i] <= 0 :
+                if t_bounds[i] < 0 :
                     t_bounds[i] = np.inf
             self._debug_print(('t_bounds= ', t_bounds), debug_flag)
 
@@ -141,12 +173,17 @@ def main():
     debug_flag = True
     #debug_flag = False
 
-    A = np.array([[1,1,2,1,0,0],[2,0,3,0,1,0,],[2,1,3,0,0,1]])
+    A = np.array([[1,1,2,1,0,0],[2,0,3,0,1,0],[2,1,3,0,0,1]])
     b = np.array([4,5,7])
     c = np.array([3,2,4,0,0,0])
 
+    '''A = np.array([[-1,1,1,0,0],[-2,-2,0,1,0],[-1,4,0,0,1]])
+    b = np.array([-1,-6,2])
+    c = np.array([1,3,0,0,0,0])'''
+
+
     lp = LP_solver(A, b, c)
-    lp.set_initial_feasible_solution()
+    #lp._set_initial_feasible_solution(debug_flag)
     lp.solve(debug_flag,lp._Dantzigs_rule)
     lp.print_current_assignment()
 
