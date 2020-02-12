@@ -30,14 +30,14 @@ class eta_matrix:
             self.col_content[i] = -self.col_content[i]* self.col_content[self.col_index]
 
 
-
-    def __str__(self):
+    def as_matrix(self):
         matrix = np.identity(self.size)
         for i in range(self.size):
-            matrix[i,self.col_index] = self.col_content[i]
+            matrix[i, self.col_index] = self.col_content[i]
+        return matrix
 
-        return str(matrix)
-
+    def __repr__(self):
+        return str(self.as_matrix())+'\n'
 
 class LP_solver:
 
@@ -51,15 +51,28 @@ class LP_solver:
         self.X_B = np.arange(m,n)
         self.X_N = np.arange(0,m)
 
-        self.X_B_star = None # b[:].astype(float)
+        self.X_B_star = None
+
+        self.A_B = None
+        self._LU_factorization()
 
     def _FTRAN(self, entering_var):
-        d = np.linalg.inv(self.A[:,self.X_B]) @ self.A[:,entering_var]
-        return d
+        result = self.A[:,entering_var]
+        for eta in self.A_B:
+            result = eta.FTRAN(result)
+
+        return result
+
+        #d = np.linalg.inv(self.A[:,self.X_B]) @ self.A[:,entering_var]
+        #return d
 
     def _BTRAN(self):
-        y = self.c[self.X_B] @ np.linalg.inv(self.A[:,self.X_B])
-        return y
+        result = self.c[self.X_B]
+        for eta in reversed(self.A_B):
+            result = eta.BTRAN(result)
+
+        #y = self.c[self.X_B] @ np.linalg.inv(self.A[:,self.X_B])
+        return result
 
     def _Blands_rule(self,z):
         candidates = [self.X_N[i] if z[i]>=0 else np.inf for i in range(len(z))]
@@ -75,7 +88,35 @@ class LP_solver:
         return entering_var
 
     def _LU_factorization(self):
-        pass
+        d_matrix = self.A[:,self.X_B].astype(float)
+        L = []
+        U = []
+
+        #generate L_i according to Gaussian elimination
+        for i in range(len(self.X_B)):
+            eta_col = np.zeros(len(self.X_B))
+            for j in range(i+1, len(self.X_B)):
+                eta_col[j] = -d_matrix[j,i]/d_matrix[i,i]
+
+            eta_col[i] = 1
+            L += [eta_matrix(i,eta_col)]
+
+            # keep working on L_i * d_matrix
+            d_matrix = L[-1].as_matrix() @ d_matrix
+
+        #generate U_i matrices by simply braking d_mat to colunms
+        for i in range(len(self.X_B)):
+            U += [eta_matrix(i,d_matrix[:,i])]
+
+        #invert L's
+        for eta in L:
+            eta.invert()
+
+        #reverse U's
+        U.reverse()
+
+        self.A_B = L+U
+        return L+U
 
     def print_current_assignment(self):
         if self.X_B_star is None:
@@ -102,6 +143,7 @@ class LP_solver:
         print('c_B: ', self.c[self.X_B])
         print('c_N: ', self.c[self.X_N])
         print('X_B_star: ', self.X_B_star)
+        print('LU_fact = ', self.A_B)
 
     def _debug_print(self, content, debug_flag):
         if debug_flag:
@@ -155,7 +197,7 @@ class LP_solver:
             if debug_flag: self.print_inner_state()
 
             # calculate entering var
-            y = self._BTRAN() #TODO: write an actual BTRAN
+            y = self._BTRAN()
             self._debug_print(('y= ',y),debug_flag)
 
             optional_z_coefficients =  self.c[self.X_N] - y@self.A[:,self.X_N]
@@ -169,7 +211,7 @@ class LP_solver:
                 return
 
             # calculate leaving var
-            d = self._FTRAN(entering_var) #TODO: write an actual FTRAN
+            d = self._FTRAN(entering_var)
             self._debug_print(('d= ', d), debug_flag)
 
 
@@ -190,9 +232,11 @@ class LP_solver:
 
 
             # update data structure
+            p = None #show me a runtime error if LU decomp is broken
             for i in range(len(self.X_B)):
                 if self.X_B[i] == leaving_var:
                     self.X_B[i] = entering_var
+                    p = i
 
             for i in range(len(self.X_N)):
                 if self.X_N[i] == entering_var:
@@ -201,11 +245,12 @@ class LP_solver:
             self.X_B_star -= d*t
             self.X_B_star[np.argmin(t_bounds)] = t
 
+            self.A_B += [eta_matrix(p,d)]
+
+            #if numeric issues:
+            #    self._LU_factorization()
             iteration_number += 1
 
-        #while(True):
-        #    pass
-            # fix numerical issues
 
 def main():
     debug_flag = True
@@ -220,16 +265,13 @@ def main():
     c = np.array([1,3,0,0,0,0])'''
 
 
-    #lp = LP_solver(A, b, c)
-    #lp._set_initial_feasible_solution(debug_flag)
-    #lp.solve(debug_flag,lp._Dantzigs_rule)
-    #lp.print_current_assignment()
+    lp = LP_solver(A, b, c)
 
-    eta = eta_matrix(1,[-3,3,15])
-    eta.invert()
-    print(eta)
-    eta.invert()
-    print(eta)
+    lp._set_initial_feasible_solution(debug_flag)
+    #lp.solve(debug_flag,lp._Blands_rule)
+    lp.solve(debug_flag, lp._Dantzigs_rule)
+    lp.print_current_assignment()
+
 
 
 if __name__ == "__main__":
