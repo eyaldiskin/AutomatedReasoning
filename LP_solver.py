@@ -1,6 +1,10 @@
 import numpy as np
 np.seterr(divide='ignore', invalid='ignore')
 
+STRATEGIES = 2
+BLAND = 0
+DANTZIG = 1
+
 class eta_matrix:
     def __init__(self, col_index, col_content):
         self.col_content = col_content
@@ -42,14 +46,19 @@ class eta_matrix:
 class LP_solver:
 
     def __init__(self, A, b, c):
+
+        self.strategies_pool = [None for _ in range(STRATEGIES)]
+        self.strategies_pool[BLAND] = self._Blands_rule
+        self.strategies_pool[DANTZIG] = self._Dantzigs_rule
+
         self.A = A
         self.b = b
         self.c = c
 
         m, n = self.A.shape
 
-        self.X_B = np.arange(m,n)
-        self.X_N = np.arange(0,m)
+        self.X_B = np.arange(n-m,n)
+        self.X_N = np.arange(0,n-m)
 
         self.X_B_star = None
 
@@ -129,8 +138,8 @@ class LP_solver:
 
         assignment = np.around(assignment, decimals=5)
 
-        print(assignment)
-        print('obj = ',assignment @ self.c)
+        print('current assignment: ',assignment)
+        print('current obj = ',assignment @ self.c)
 
     def print_inner_state(self):
         print('A: ', self.A)
@@ -149,7 +158,7 @@ class LP_solver:
         if debug_flag:
             print(content)
 
-    def _set_initial_feasible_solution(self, debug_flag):
+    def _set_initial_feasible_solution(self, debug_flag, strategy):
 
         #if possible- just use the 0 assignment and finish
         if min(self.b) >= 0:
@@ -158,37 +167,54 @@ class LP_solver:
 
         #if it's a non-trivial issue- solve the auxilery problem
         else:
-            print('please supply an initial assignment')
-            return False
 
-            '''x0_col = np.full((self.A.shape[0], 1), -1.)
+            self._debug_print(('################# auxiliary problem created ###########################'), debug_flag)
+            #generate auxiliry problem object
+            x0_col = np.full((self.A.shape[0], 1), -1.)
 
-            new_obj = np.zeros(self.A.shape[1]+1)
+            new_obj = np.zeros(self.A.shape[1] + 1)
             new_obj[0] = -1
 
-
             auxiliary = LP_solver(np.append(x0_col, self.A, axis=1), self.b, new_obj)
-            auxiliary.X_B_star = np.zeros(auxiliary.X_B.shape[0]).astype(float)
-            auxiliary.print_inner_state()
 
-            minimize = True
-            auxiliary.solve(debug_flag, auxiliary._Blands_rule,minimize)
+            #manually set first assingment
+            auxiliary.X_B_star = auxiliary.b[:].astype(float)
 
-            self.X_B = auxiliary.X_B
-            self.X_B_star = auxiliary.X_B_star
+            entering_var = 0
+            leaving_var = np.argmin(auxiliary.b)
 
-            X_N = []
-            for i in range(self.A.shape[1]):
-                if i+1 not in self.X_B:
-                    X_N += [i]
+            auxiliary.X_N[0] = auxiliary.A.shape[1] - auxiliary.A.shape[0] + leaving_var
+            auxiliary.X_B[leaving_var] = entering_var
 
-            self.X_N = np.array(X_N)'''
+            auxiliary.X_B_star[leaving_var] = 0
+            auxiliary.X_B_star += -auxiliary.b[leaving_var]
 
-    def solve(self, debug_flag, strategy):
+            auxiliary._LU_factorization()
+
+            #solve
+            auxiliary.solve(debug_flag, strategy,True)
+
+            #exctract feasible solution for self
+            if 0 in auxiliary.X_N:
+                self.X_B = auxiliary.X_B -1
+                self.X_B_star = auxiliary.X_B_star
+                self.X_N = auxiliary.X_N[auxiliary.X_N != 0] -1
+                self._LU_factorization()
+
+                self._debug_print(('################# auxiliary problem solved ###########################'), debug_flag)
+                if debug_flag: self.print_inner_state()
+                return True
+
+            else:
+                print('no feasible solution found')
+                return False
+
+
+    def solve(self, debug_flag,strategy, stop_on_zero=False):
 
         #make sure we start from an initial feasible assignment
         if self.X_B_star is None:
-            if not self._set_initial_feasible_solution(debug_flag):
+            if not self._set_initial_feasible_solution(debug_flag,strategy):
                 return
 
         iteration_number = 1
@@ -203,7 +229,7 @@ class LP_solver:
             optional_z_coefficients =  self.c[self.X_N] - y@self.A[:,self.X_N]
             self._debug_print(('optional_z_coefficients= ',optional_z_coefficients),debug_flag)
 
-            entering_var = strategy(optional_z_coefficients)
+            entering_var = self.strategies_pool[strategy](optional_z_coefficients)
             self._debug_print(('entering_var= ', entering_var), debug_flag)
 
             if np.isinf(entering_var):
@@ -217,13 +243,13 @@ class LP_solver:
 
             t_bounds = self.X_B_star / d
             for i in range(len(t_bounds)):
-                if t_bounds[i] < 0 :
+                if t_bounds[i] <= 0 :
                     t_bounds[i] = np.inf
             self._debug_print(('t_bounds= ', t_bounds), debug_flag)
 
             t = min(t_bounds)
             if np.isinf(t):
-                print('unbounded problem, increase var '+str(entering_var)+' to inf')
+                print('unbounded problem, increase var x_'+str(entering_var+1)+' to inf')
                 return
 
             self._debug_print(('t= ', t), debug_flag)
@@ -247,14 +273,19 @@ class LP_solver:
 
             self.A_B += [eta_matrix(p,d)]
 
+            if debug_flag: self.print_current_assignment()
+
+            if stop_on_zero and self.c[self.X_B] @ self.X_B_star == 0:
+                return
+
             #if numeric issues:
             #    self._LU_factorization()
             iteration_number += 1
 
 
 def main():
-    debug_flag = True
-    #debug_flag = False
+    #debug_flag = True
+    debug_flag = False
 
     A = np.array([[1,1,2,1,0,0],[2,0,3,0,1,0],[2,1,3,0,0,1]])
     b = np.array([4,5,7])
@@ -262,14 +293,12 @@ def main():
 
     '''A = np.array([[-1,1,1,0,0],[-2,-2,0,1,0],[-1,4,0,0,1]])
     b = np.array([-1,-6,2])
-    c = np.array([1,3,0,0,0,0])'''
+    c = np.array([1,3,0,0,0])'''
 
 
     lp = LP_solver(A, b, c)
 
-    lp._set_initial_feasible_solution(debug_flag)
-    #lp.solve(debug_flag,lp._Blands_rule)
-    lp.solve(debug_flag, lp._Dantzigs_rule)
+    lp.solve(debug_flag,BLAND)
     lp.print_current_assignment()
 
 
