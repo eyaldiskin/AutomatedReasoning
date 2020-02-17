@@ -3,7 +3,7 @@ from enum import Enum
 
 class TType(Enum):
     VAR = 1
-    FUN = 2
+    FOO = 2
     PRED = 3
 
 
@@ -34,6 +34,16 @@ class TData:
 
     def get_type(self):
         return self.type.name
+
+    def __eq__(self, other):
+        if self.type != other.type or self.name != other.name:
+            return False
+        if self.type == TType.VAR:
+            return True
+        for i in range(len(self.arguments)):
+            if self.arguments[i] != other.arguments[i]:
+                return False
+        return True
 
     # def applyAssignment(self, assignment: dict):
     #     if self.type is FT.VAR:
