@@ -31,6 +31,10 @@ class Formula():
                 variables = variables.union(formula.variables)
             self.variables = variables
 
+    @classmethod
+    def fromString(string: str):
+        pass  # need to implement
+
     def __and__(self, other):
         return Formula(FT.AND, formulas=[self, other])
 
@@ -39,9 +43,6 @@ class Formula():
 
     def __neg__(self):
         return Formula(FT.NEG, formulas=[self])
-
-    def __eq__(self, other):
-        return Formula(FT.IFF, formulas=[self, other])
 
     def __le__(self, other):
         return Formula(FT.IMPLIES, formulas=[other, self])
@@ -65,7 +66,7 @@ class Formula():
         """
         should only be called if literal
         """
-        return self.variables[0]
+        return next(iter(self.variables))
 
     def isLiteral(self):
         if self.type == FT.VAR:
@@ -223,18 +224,61 @@ class Formula():
             return not (first and not second)
 
     def applyPartialAssignment(self, assignment: dict):
+        # will probably be more efficient if variables and assignment.keys are sorted
         if len(self .variables - assignment.keys) > 0:
             return True
         return self.applyAssignment(assignment)
 
+    def __getitem__(self, key):
+        return self.formulas[key]
 
-def areEquivalentFormulas(f1: Formula, f2: Formula):
-    if not f1.variables == f2.variables:
-        return False
-    for assignment in getAssignmentGenerator(f1):
-        if not f1.applyAssignment(assignment) == f2.applyAssignment(assignment):
+    def toString(self):
+        if self.type is FT.VAR:
+            return self.name
+
+        string = self.type.value + "("
+        first = True
+        formula: Formula
+        for formula in self.formulas:
+            if not first:
+                string += ","
+            first = False
+            string += Formula.toString()
+        string += ")"
+        return string
+
+    def __eq__(self, other):
+        f1 = self
+        f2 = other
+        if not f1.variables == f2.variables:
             return False
-    return True
+        for assignment in getAssignmentGenerator(f1):
+            if not f1.applyAssignment(assignment) == f2.applyAssignment(assignment):
+                return False
+        return True
+
+    def append(self, clause):
+        """assumes clause doesn't have new variables
+
+        Arguments:
+            clause {Formula} -- clause to append
+        """
+        self.formulas.append(clause)
+
+    def __contains__(self, formula):
+        for f in self.formulas:
+            if f == formula:
+                return True
+        return False
+
+def areEqualFormulas(f1: Formula, f2: Formula):
+    if f1.type == f2.type:
+        if len(f1.formulas) == len(f2.formulas):
+            for i in range(len(f1.formulas)):
+                if not areEqualFormulas(f1[i], f2[i]):
+                    return False
+            return True
+    return False
 
 
 def getAssignmentGenerator(formula):
