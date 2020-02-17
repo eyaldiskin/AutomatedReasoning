@@ -1,7 +1,8 @@
 from TData import *
+import Formula
 
 
-class Element:
+class _Element:
     def __init__(self, data: TData, args: list = None):
         # the information for union-find alg
         self.parent = self
@@ -33,7 +34,7 @@ class Element:
         if my_root.rank == other_root.rank:
             my_root.rank += 1
         other_root.parent = my_root
-        my_root.dependencies = my_root.dependencies | other_root.dependencies
+        my_root.dependencies |= other_root.dependencies
         other_root.dependencies = set()
 
     def is_congruence(self, other):
@@ -68,12 +69,12 @@ class UnionFind:
         if data in self.data_elems:
             return self.elems[self.data_elems.index(data)]
         if data.type == TType.VAR:
-            elem = Element(data)
+            elem = _Element(data)
         else:
             children = [None] * len(data.arguments)
             for i in range(len(data.arguments)):
                 children[i] = self._insert_element(data.arguments[i])
-            elem = Element(data, children)
+            elem = _Element(data, children)
         self.data_elems.append(data)
         self.elems.append(elem)
         return elem
