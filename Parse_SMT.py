@@ -1,6 +1,4 @@
-# import SMT
 from Formula import *
-# import re
 
 logic = {"!": FT.NEG, "&&": FT.AND, "||": FT.OR, ">>": FT.IMPLIES, "==": FT.IFF}
 spacial_chars = "|&>="
@@ -17,32 +15,36 @@ def parse_parentheses(smt: str):
     groups = []
     depth = 0
     cur = ""
-    try:
-        for char in smt:
-            if char == '[':
-                if cur:
-                    push(cur, groups, depth)
-                    cur = ""
-                push([], groups, depth)
-                depth += 1
-            elif char == ']':
-                if cur:
-                    push(cur, groups, depth)
-                    cur = ""
-                depth -= 1
-            else:
-                # push(char, groups, depth)
-                cur += char
-    except IndexError:
-        raise ValueError('Parentheses mismatch')
-
+    for char in smt:
+        if char == '[':
+            if cur:
+                push(cur, groups, depth)
+                cur = ""
+            push([], groups, depth)
+            depth += 1
+        elif char == ']':
+            if depth == 0:
+                raise ValueError('Parentheses mismatch')
+            if cur:
+                push(cur, groups, depth)
+                cur = ""
+            depth -= 1
+        else:
+            cur += char
     if depth > 0:
         raise ValueError('Parentheses mismatch')
-    else:
-        return groups
+    return groups
 
 
-def string_helper(s: str):
+def make_var(cur, neg, t_parser):
+    data, name = t_parser(cur)
+    f = Formula(FT.VAR, varName=name, data=data)
+    if neg:
+        f = Formula(FT.NEG, [f])
+    return f
+
+
+def string_helper(s: str, t_parser):
     subformulas = []
     cur = ""
     flag = ''
@@ -57,13 +59,10 @@ def string_helper(s: str):
                 elif type != logic[char * 2]:
                     raise ValueError('Formula type mismatch')
                 if cur:
-                    data, name = cur, cur # todo add theory parser
-                    cur = ""
-                    f = Formula(FT.VAR, varName=name, data=data)
-                    if neg:
-                        f = Formula(FT.NEG, [f])
-                        neg = False
+                    f = make_var(cur, neg, t_parser)
                     subformulas.append(f)
+                    neg = False
+                    cur = ""
             elif flag == '':
                 flag = char
             else:
@@ -74,34 +73,55 @@ def string_helper(s: str):
         else:
             cur += flag + char
             flag = ''
+    cur += flag
+    if cur:
+        f = make_var(cur, neg, t_parser)
+        subformulas.append(f)
+        neg = False
     return type, subformulas, neg
 
 
-def parse_to_formula(l: list):
+def parse_to_formula(l: list, t_parser):
     subformulas = []
-    type = FT.VAR
+    type = None
     neg = False
     for item in l:
         if isinstance(item, list):
-            f = parse_to_formula(item)
+            f = parse_to_formula(item, t_parser)
             if neg:
                 f = Formula(FT.NEG, [f])
                 neg = False
             subformulas.append(f)
         elif isinstance(item, str):
-            type, s, neg = string_helper(item)
+            t, s, neg = string_helper(item, t_parser)
+            if not t:
+                raise ValueError('Formula format mismatch')
+            if not type:
+                type = t
+            elif type != t:
+                raise ValueError('Formula type mismatch')
             subformulas.extend(s)
+    if not type:
+        raise ValueError('Formula format mismatch')
     return Formula(type, subformulas)
 
 
-def parse(smt: str):
-    l = parse_parentheses(smt)
-    f = parse_to_formula(l)
-    return f
+def parse(smt: str, t_parser):
+    return parse_to_formula(parse_parentheses(smt), t_parser)
 
 
-a = "[a||[b==[c>>d]]]&&![[d>>c]>>[!a&&b]]"
+def foo(s):
+    return s, s
+
+
+s = "[a||[b==[c>>d]]]&&![[d>>c]>[!a&&b]]"
 # lst = parse_parentheses(a)
 # print(len(lst))
 # print(lst)
-print(parse(a))
+a = Formula(FT.VAR, varName="a", data="a")
+b = Formula(FT.VAR, varName="b", data="b")
+c = Formula(FT.VAR, varName="c", data="c")
+d = Formula(FT.VAR, varName="d", data="d")
+
+formula = (a | (Formula(FT.IFF, [b, d <= c]))) & -((-a & b) <= (c <= d))
+print(parse(s, foo) == formula)
