@@ -4,6 +4,8 @@ np.seterr(divide='ignore', invalid='ignore')
 STRATEGIES = 2
 BLAND = 0
 DANTZIG = 1
+LU_FACT_SIZE_LIMIT = 500
+EPSILON = 10**(-20)
 
 class eta_matrix:
     def __init__(self, col_index, col_content):
@@ -72,6 +74,12 @@ class LP_solver:
 
         return result
 
+    def _b_FTRAN(self):
+        result = self.b
+        for eta in self.A_B:
+            result = eta.FTRAN(result)
+
+        return result
         #d = np.linalg.inv(self.A[:,self.X_B]) @ self.A[:,entering_var]
         #return d
 
@@ -84,12 +92,17 @@ class LP_solver:
         return result
 
     def _Blands_rule(self,z):
-        candidates = [self.X_N[i] if z[i]>=0 else np.inf for i in range(len(z))]
-        entering_var = min(candidates)
+        entering_var = np.inf
+
+        for i in range(len(z)):
+            if z[i] >= EPSILON:
+                entering_var = self.X_N[i]
+                break
+
         return entering_var
 
     def _Dantzigs_rule(self,z):
-        if max(z) >= 0 :
+        if max(z) >= EPSILON :
             entering_var = self.X_N[np.argmax(z)]
         else:
             entering_var = np.inf
@@ -152,7 +165,8 @@ class LP_solver:
         print('c_B: ', self.c[self.X_B])
         print('c_N: ', self.c[self.X_N])
         print('X_B_star: ', self.X_B_star)
-        print('LU_fact = ', self.A_B)
+        print('LU fact length: ',str(len(self.A_B)))
+        # print('LU_fact = ', self.A_B)
 
     def _debug_print(self, content, debug_flag):
         if debug_flag:
@@ -195,19 +209,20 @@ class LP_solver:
             auxiliary.solve(debug_flag, strategy,True)
 
             #exctract feasible solution for self
-            if 0 in auxiliary.X_N:
-                self.X_B = auxiliary.X_B -1
-                self.X_B_star = auxiliary.X_B_star
-                self.X_N = auxiliary.X_N[auxiliary.X_N != 0] -1
-                self._LU_factorization()
-
-                self._debug_print(('################# auxiliary problem solved ###########################'), debug_flag)
-                if debug_flag: self.print_inner_state()
-                return True
-
-            else:
+            if 0 in auxiliary.X_B and auxiliary.X_B_star[np.where(auxiliary.X_B==0)] == 0 :
                 print('no feasible solution found')
                 return False
+
+            else:
+                self.X_B = auxiliary.X_B - 1
+                self.X_B_star = auxiliary.X_B_star
+                self.X_N = auxiliary.X_N[auxiliary.X_N != 0] - 1
+                self._LU_factorization()
+
+                self._debug_print(('################# auxiliary problem solved ###########################'),
+                                  debug_flag)
+                if debug_flag: self.print_inner_state()
+                return True
 
 
     def solve(self, debug_flag,strategy, stop_on_zero=False):
@@ -278,22 +293,60 @@ class LP_solver:
             if stop_on_zero and self.c[self.X_B] @ self.X_B_star == 0:
                 return
 
-            #if numeric issues:
-            #    self._LU_factorization()
+            #check for numeric issues
+            if len(self.A_B) > LU_FACT_SIZE_LIMIT:
+                self._LU_factorization()
+
+            if d[p] <= EPSILON:
+                self._LU_factorization()
+
+            X_B_STAR_hat = self._b_FTRAN()
+            delta = abs(X_B_STAR_hat - self.X_B_star)
+            valid_delta = [True if j <= EPSILON else False for j in delta]
+            if not all(valid_delta):
+                self._LU_factorization()
+
+
             iteration_number += 1
+
+class Arithmatics_solver:
+    def __init__(self):
+        pass
+
+    def answer_conflict(self, constraints):
+        #only look for feasible assumption
+        pass
+
+    def answer_propagate(self, constraints, unknown):
+        # foe each new condition, does it intersect the polytope?
+        pass
+
+    def answer_explain(self, low_level_constraints, latest_constraint):
+        # maximize latest constraint
+        # return slack vars with 0 assignment
+        pass
 
 
 def main():
     #debug_flag = True
     debug_flag = False
 
-    A = np.array([[1,1,2,1,0,0],[2,0,3,0,1,0],[2,1,3,0,0,1]])
-    b = np.array([4,5,7])
-    c = np.array([3,2,4,0,0,0])
+    # A = np.array([[1,1,2,1,0,0],[2,0,3,0,1,0],[2,1,3,0,0,1]])
+    # b = np.array([4,5,7])
+    # c = np.array([3,2,4,0,0,0])
+    #
+    # A = np.array([[-1,1,1,0,0],[-2,-2,0,1,0],[-1,4,0,0,1]])
+    # b = np.array([-1,-6,2])
+    # c = np.array([1,3,0,0,0])
 
-    '''A = np.array([[-1,1,1,0,0],[-2,-2,0,1,0],[-1,4,0,0,1]])
-    b = np.array([-1,-6,2])
-    c = np.array([1,3,0,0,0])'''
+    A = np.array([[1,1,0,0,0,0],[0,0,1,1,0,0],[0,0,0,0,1,1],[1,0,1,0,1,0],[0,1,0,1,0,1]])
+    A = np.append(A,np.identity(5),axis=1)
+    A.shape = (5,11)
+
+    b = np.array([480,400,230,420,250])
+    c = np.array([6,2,8,3,9,5])
+    c = np.append(c,np.zeros(5))
+
 
 
     lp = LP_solver(A, b, c)
