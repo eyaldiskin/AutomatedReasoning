@@ -1,11 +1,25 @@
 import numpy as np
+import re
 np.seterr(divide='ignore', invalid='ignore')
 
+# LP solver consts
 STRATEGIES = 2
 BLAND = 0
 DANTZIG = 1
 LU_FACT_SIZE_LIMIT = 500
 EPSILON = 10**(-20)
+
+# equations consts
+EQ = '=='
+GEQ = '<='
+GTH = '<<'
+NEQ = '!='
+
+VARIABLE_PATTERN = re.compile('[\-]?\d*\.?\d*[_A-z]+\d*')
+CONST_PATTERN = re.compile('[\-]?\d*\.?\d+')
+PROPOSITION_PATTERN = re.compile('[!=<]{1,2}')
+COEFFICIENT_PATTERN = re.compile('[\-]?\d*\.?\d+|\-')
+GENERAL_TOKEN_PATTERN = re.compile('[\-]?\d*\.?\d*[_A-z]+\d*|[\-]?\d*\.?\d+|[!=<]{1,2}')
 
 class eta_matrix:
     def __init__(self, col_index, col_content):
@@ -172,7 +186,7 @@ class LP_solver:
         if debug_flag:
             print(content)
 
-    def _set_initial_feasible_solution(self, debug_flag, strategy):
+    def set_initial_feasible_solution(self, debug_flag, strategy):
 
         #if possible- just use the 0 assignment and finish
         if min(self.b) >= 0:
@@ -229,7 +243,7 @@ class LP_solver:
 
         #make sure we start from an initial feasible assignment
         if self.X_B_star is None:
-            if not self._set_initial_feasible_solution(debug_flag,strategy):
+            if not self.set_initial_feasible_solution(debug_flag, strategy):
                 return
 
         iteration_number = 1
@@ -309,16 +323,133 @@ class LP_solver:
 
             iteration_number += 1
 
+class equstion:
+
+    def __init__(self, formula):
+        self.variables = {}
+        self.const_value = None
+        self.proposition = None
+
+        #parse formula string
+        tokens = GENERAL_TOKEN_PATTERN.findall(re.sub('\s','',formula))
+        proposition_seen_flag = False
+
+        for t in tokens:
+            if VARIABLE_PATTERN.match(t):
+                match = COEFFICIENT_PATTERN.match(t)
+                if match:
+                    coefficient = t[match.start():match.end()]
+                    if coefficient == '-':
+                        coefficient = '-1'
+
+                    var_name = t[match.end():]
+                else:
+                    coefficient = '1'
+                    var_name = t
+
+                if var_name not in self.variables:
+                    self.variables[var_name] = 0
+
+                if proposition_seen_flag: #we are on the right side of the equation. flip sign.
+                    self.variables[var_name] -= float(coefficient)
+                else:
+                    self.variables[var_name] += float(coefficient)
+
+
+            elif CONST_PATTERN.match(t):
+                if self.const_value is None:
+                    self.const_value = 0
+
+                if proposition_seen_flag: #we are on the right side of the equation. flip sign.
+                    self.const_value += float(t)
+                else:
+                    self.const_value -= float(t)
+
+            elif PROPOSITION_PATTERN.match(t):
+                if proposition_seen_flag: #two propositions detected. invalid formula
+                    self.proposition = None
+
+                    return
+
+                proposition_seen_flag = True
+                self.proposition = t
+
+    def check_validity(self):
+        if not bool(self.variables):
+            return False
+        if self.const_value is None:
+            return False
+        if self.proposition is None:
+            return False
+
+        return True
+
+    def get_all_vars_names(self):
+        return set(self.variables.keys())
+
+    def get_matrix_format(self, vars_order):
+        single_row = np.zeros(len(vars_order))
+        for i in range(len(vars_order)):
+            if vars_order[i] in self.variables:
+                single_row[i] = self.variables[vars_order[i]]
+
+        return (single_row,self.const_value, self.proposition)
+
+    def flip_sides(self):
+        for var in self.variables:
+            self.variables[var] *= (-1)
+
+        self.const_value *= (-1)
+
+        if '<' in self.proposition:
+            self.proposition = self.proposition.replace('<','>')
+        else:
+            self.proposition = self.proposition.replace('>','<')
+
+    def negate(self):
+        pass
+
 class Arithmatics_solver:
     def __init__(self):
         pass
 
-    def answer_conflict(self, constraints):
+    def parse_equation(self, string):
+        return equstion(string)
+
+    def _convert_constraints_to_matrix(self, constraints):
+        variables_pool = set()
+        for c in constraints:
+            variables_pool.union(c.get_all_vars_names)
+
+        variables_pool = list(variables_pool)
+        matrix_data = [c.get_matrix_format(variables_pool) for c in constraints]
+
+        A = np.array(matrix_data[:, 0])
+        b = np.array(matrix_data[:, 1])
+
+        m,n = A.shape
+        A = np.append(A, np.identity(m), axis=1)
+        A.shape = (m,m+n)
+
+        return (A,b, variables_pool)
+
+    def answer_conflict(self, constraints, strategy=BLAND, debug_flag=False):
+
         #only look for feasible assumption
-        pass
+        A, b, var_pool = self._convert_constraints_to_matrix(constraints)
+
+        c = np.zeros(len(var_pool))
+
+        lp = LP_solver(A,b,c)
+        lp.set_initial_feasible_solution(debug_flag, strategy)
+
+        if(lp.X_B_star in None):
+            return False
+        else:
+            return True
 
     def answer_propagate(self, constraints, unknown):
-        # foe each new condition, does it intersect the polytope?
+        # for each new condition, does it intersect the polytope?
         pass
 
     def answer_explain(self, low_level_constraints, latest_constraint):
@@ -339,20 +470,35 @@ def main():
     # b = np.array([-1,-6,2])
     # c = np.array([1,3,0,0,0])
 
-    A = np.array([[1,1,0,0,0,0],[0,0,1,1,0,0],[0,0,0,0,1,1],[1,0,1,0,1,0],[0,1,0,1,0,1]])
-    A = np.append(A,np.identity(5),axis=1)
-    A.shape = (5,11)
+    # A = np.array([[1,1,0,0,0,0],[0,0,1,1,0,0],[0,0,0,0,1,1],[1,0,1,0,1,0],[0,1,0,1,0,1]])
+    # A = np.append(A,np.identity(5),axis=1)
+    # A.shape = (5,11)
+    #
+    # b = np.array([480,400,230,420,250])
+    # c = np.array([6,2,8,3,9,5])
+    # c = np.append(c,np.zeros(5))
+    #
+    #
+    #
+    # lp = LP_solver(A, b, c)
+    #
+    # lp.solve(debug_flag,BLAND)
+    # lp.print_current_assignment()
 
-    b = np.array([480,400,230,420,250])
-    c = np.array([6,2,8,3,9,5])
-    c = np.append(c,np.zeros(5))
+    equstion_string1 = 'x+ 2y4 - 2x4 -y4 +1.5 -6x = 10'
+    e1 = equstion(equstion_string1)
+
+    equstion_string2 = '3f8 +4f_14 < 67 + 5x'
+    e2 = equstion(equstion_string2)
+
+    all_vars = list(e1.get_all_vars_names().union(e2.get_all_vars_names()))
+    print(all_vars)
+    print(e1.get_matrix_format(all_vars))
+    e1.flip_sides()
+    print(e1.get_matrix_format(all_vars))
+    print(e2.get_matrix_format(all_vars))
 
 
-
-    lp = LP_solver(A, b, c)
-
-    lp.solve(debug_flag,BLAND)
-    lp.print_current_assignment()
 
 
 
