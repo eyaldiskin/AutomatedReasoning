@@ -10,16 +10,18 @@ LU_FACT_SIZE_LIMIT = 500
 EPSILON = 10**(-20)
 
 # equations consts
-EQ = '=='
-GEQ = '<='
-GTH = '<<'
+EQ = '='
 NEQ = '!='
+GT = '>'
+GEQ = '>='
+LT = '<'
+LEQ = '<='
 
 VARIABLE_PATTERN = re.compile('[\-]?\d*\.?\d*[_A-z]+\d*')
 CONST_PATTERN = re.compile('[\-]?\d*\.?\d+')
-PROPOSITION_PATTERN = re.compile('[!=<]{1,2}')
+PROPOSITION_PATTERN = re.compile('[!=><]{1,2}')
 COEFFICIENT_PATTERN = re.compile('[\-]?\d*\.?\d+|\-')
-GENERAL_TOKEN_PATTERN = re.compile('[\-]?\d*\.?\d*[_A-z]+\d*|[\-]?\d*\.?\d+|[!=<]{1,2}')
+GENERAL_TOKEN_PATTERN = re.compile('[\-]?\d*\.?\d*[_A-z]+\d*|[\-]?\d*\.?\d+|[!=><]{1,2}')
 
 class eta_matrix:
     def __init__(self, col_index, col_content):
@@ -168,6 +170,18 @@ class LP_solver:
         print('current assignment: ',assignment)
         print('current obj = ',assignment @ self.c)
 
+    def get_current_assignment(self):
+        if self.X_B_star is None:
+            return('no assignments are known',None)
+
+        assignment = [0 for _ in range(self.A.shape[1])]
+        for i in range(len(self.X_B)):
+            assignment[self.X_B[i]] = self.X_B_star[i]
+
+        assignment = np.around(assignment, decimals=5)
+
+        return (assignment,assignment @ self.c)
+
     def print_inner_state(self):
         print('A: ', self.A)
         print('b: ', self.b)
@@ -223,13 +237,17 @@ class LP_solver:
             auxiliary.solve(debug_flag, strategy,True)
 
             #exctract feasible solution for self
-            if 0 in auxiliary.X_B and auxiliary.X_B_star[np.where(auxiliary.X_B==0)] == 0 :
+            if 0 in auxiliary.X_B and auxiliary.X_B_star[np.where(auxiliary.X_B==0)] != 0 :
                 print('no feasible solution found')
                 return False
 
             else:
                 self.X_B = auxiliary.X_B - 1
                 self.X_B_star = auxiliary.X_B_star
+
+                if -1 in self.X_B:
+                    self.X_B[np.where(self.X_B == -1)] = auxiliary.X_N[0]-1
+                    auxiliary.X_N[0] = 0
                 self.X_N = auxiliary.X_N[auxiliary.X_N != 0] - 1
                 self._LU_factorization()
 
@@ -329,6 +347,7 @@ class equstion:
         self.variables = {}
         self.const_value = None
         self.proposition = None
+        self.slack_use = False
 
         #parse formula string
         tokens = GENERAL_TOKEN_PATTERN.findall(re.sub('\s','',formula))
@@ -374,6 +393,16 @@ class equstion:
                 proposition_seen_flag = True
                 self.proposition = t
 
+    def __repr__(self):
+        description = ''
+        for key, value in self.variables.items():
+            description += '+ ('+str(value)+key+') '
+        if self.slack_use:
+            description += '+slack '
+        description += self.proposition + ' '
+        description += ' '+str(self.const_value)
+        return description
+
     def check_validity(self):
         if not bool(self.variables):
             return False
@@ -387,120 +416,169 @@ class equstion:
     def get_all_vars_names(self):
         return set(self.variables.keys())
 
+    def get_slack_status(self):
+        return self.slack_use
+
     def get_matrix_format(self, vars_order):
-        single_row = np.zeros(len(vars_order))
+        assert self.proposition == LEQ
+
+        row_len = len(vars_order) +1
+        single_row = np.zeros(row_len)
+
         for i in range(len(vars_order)):
             if vars_order[i] in self.variables:
                 single_row[i] = self.variables[vars_order[i]]
 
-        return (single_row,self.const_value, self.proposition)
+        if self.slack_use:
+            single_row[-1] = 1
 
-    def flip_sides(self):
-        for var in self.variables:
-            self.variables[var] *= (-1)
+        return (single_row,self.const_value)
 
-        self.const_value *= (-1)
-
-        if '<' in self.proposition:
-            self.proposition = self.proposition.replace('<','>')
-        else:
-            self.proposition = self.proposition.replace('>','<')
-
-    def negate(self):
-        pass
 
 class Arithmatics_solver:
     def __init__(self):
         pass
 
-    def parse_equation(self, string):
-        return equstion(string)
+    def parse_equations(self, strings):
+        return [equstion(string) for string in strings]
+
+    def _copy_equation(self,old_equation):
+        new_equation = equstion('')
+        for key in old_equation.variables:
+            new_equation.variables[key] = old_equation.variables[key]
+
+        new_equation.const_value = old_equation.const_value
+        new_equation.proposition = old_equation.proposition
+        new_equation.slack_use = old_equation.slack_use
+
+        return new_equation
+
+    def _flip_equation_sides(self,equation):
+        for key in equation.variables:
+            equation.variables[key] = -equation.variables[key]
+
+        equation.const_value = -equation.const_value
+
+    def _geq_to_leq(self, old_equation):
+        assert old_equation.proposition == GEQ
+
+        new_equation = self._copy_equation(old_equation)
+        self._flip_equation_sides(new_equation)
+
+        new_equation.proposition = LEQ
+        return new_equation
+
+    def _eq_to_geq_and_leq(self, old_equation):
+        assert old_equation.proposition == EQ
+        new_GT_equation = self._copy_equation(old_equation)
+        new_LT_equation = self._copy_equation(old_equation)
+
+        new_GT_equation.proposition = GEQ
+        new_LT_equation.proposition = LEQ
+
+        return (new_GT_equation, new_LT_equation)
+
+    def _lt_to_eq(self,old_equation):
+        assert old_equation.proposition == LT
+
+        new_equation = self._copy_equation(old_equation)
+
+        new_equation.proposition = EQ
+        new_equation.slack_use = True
+
+        return new_equation
+
+    def _neq_to_slack_leqs(self,old_equation):
+        assert old_equation.proposition == NEQ
+        new_equation1 = self._copy_equation(old_equation)
+        new_equation1.proposition = LEQ
+        new_equation1.slack_use = True
+
+        new_equation2 = self._copy_equation(new_equation1)
+        self._flip_equation_sides(new_equation2)
+
+        return (new_equation1, new_equation2)
 
     def _convert_constraints_to_matrix(self, constraints):
         variables_pool = set()
+        slack_used = False
         for c in constraints:
-            variables_pool.union(c.get_all_vars_names)
+            variables_pool = variables_pool.union(c.get_all_vars_names())
+            slack_used = slack_used or c.get_slack_status()
 
         variables_pool = list(variables_pool)
         matrix_data = [c.get_matrix_format(variables_pool) for c in constraints]
 
-        A = np.array(matrix_data[:, 0])
-        b = np.array(matrix_data[:, 1])
+        A = np.array([tup[0] for tup in matrix_data])
+        b = np.array([tup[1] for tup in matrix_data])
+
 
         m,n = A.shape
         A = np.append(A, np.identity(m), axis=1)
         A.shape = (m,m+n)
 
-        return (A,b, variables_pool)
+        c = np.zeros(m+n)
+        c[len(variables_pool)] = 1
 
-    def answer_conflict(self, constraints, strategy=BLAND, debug_flag=False):
+        return (A,b,c, slack_used, variables_pool)
+
+    def answer_LEQ_conflict(self, constraints, strategy=BLAND, debug_flag=False):
 
         #only look for feasible assumption
-        A, b, var_pool = self._convert_constraints_to_matrix(constraints)
-
-        c = np.zeros(len(var_pool))
+        A, b, c, slack_used, var_pool = self._convert_constraints_to_matrix(constraints)
 
         lp = LP_solver(A,b,c)
-        lp.set_initial_feasible_solution(debug_flag, strategy)
+        lp.solve(debug_flag,strategy)
 
-        if(lp.X_B_star in None):
+        assign , obj =lp.get_current_assignment()
+
+        if obj is None:
             return False
+
+        print(var_pool)
+        print(assign[:len(var_pool)])
+        print('obj: '+str(obj))
+
+        if slack_used:
+            return obj>0
         else:
             return True
 
-    def answer_propagate(self, constraints, unknown):
-        # for each new condition, does it intersect the polytope?
-        pass
 
-    def answer_explain(self, low_level_constraints, latest_constraint):
-        # maximize latest constraint
-        # return slack vars with 0 assignment
-        pass
+    # def answer_propagate(self, constraints, unknown):
+    #     # for each new condition, does it intersect the polytope?
+    #     pass
+    #
+    # def answer_explain(self, low_level_constraints, latest_constraint):
+    #     # maximize latest constraint
+    #     # return slack vars with 0 assignment
+    #     pass
 
 
 def main():
-    #debug_flag = True
-    debug_flag = False
+    AS = Arithmatics_solver()
 
-    # A = np.array([[1,1,2,1,0,0],[2,0,3,0,1,0],[2,1,3,0,0,1]])
-    # b = np.array([4,5,7])
-    # c = np.array([3,2,4,0,0,0])
-    #
-    # A = np.array([[-1,1,1,0,0],[-2,-2,0,1,0],[-1,4,0,0,1]])
-    # b = np.array([-1,-6,2])
-    # c = np.array([1,3,0,0,0])
+    equation_strings = ['-x_1 + x_2 <= -1', '-2x_1 -2x_2 <= -6', '-x_1 + 4x_2 <= 2']
 
-    # A = np.array([[1,1,0,0,0,0],[0,0,1,1,0,0],[0,0,0,0,1,1],[1,0,1,0,1,0],[0,1,0,1,0,1]])
-    # A = np.append(A,np.identity(5),axis=1)
-    # A.shape = (5,11)
-    #
-    # b = np.array([480,400,230,420,250])
-    # c = np.array([6,2,8,3,9,5])
-    # c = np.append(c,np.zeros(5))
-    #
-    #
-    #
-    # lp = LP_solver(A, b, c)
-    #
-    # lp.solve(debug_flag,BLAND)
-    # lp.print_current_assignment()
+    #SMT: parse these equations!
 
-    equstion_string1 = 'x+ 2y4 - 2x4 -y4 +1.5 -6x = 10'
-    e1 = equstion(equstion_string1)
+    equations = AS.parse_equations(equation_strings)
+    for e in equations:
+        print(e)
 
-    equstion_string2 = '3f8 +4f_14 < 67 + 5x'
-    e2 = equstion(equstion_string2)
+    #SMT: good. now take these equationd, do T_conflict.
 
-    all_vars = list(e1.get_all_vars_names().union(e2.get_all_vars_names()))
-    print(all_vars)
-    print(e1.get_matrix_format(all_vars))
-    e1.flip_sides()
-    print(e1.get_matrix_format(all_vars))
-    print(e2.get_matrix_format(all_vars))
+    A, b, c, slack_stat, vars_pool = AS._convert_constraints_to_matrix(equations)
+    print(A)
+    print(b)
+    print(c)
+    print(vars_pool)
 
+    print('------------------------')
 
+    ans = AS.answer_LEQ_conflict(equations,BLAND)
 
-
+    print(ans)
 
 if __name__ == "__main__":
     main()
