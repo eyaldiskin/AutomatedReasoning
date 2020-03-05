@@ -31,9 +31,6 @@ class Formula():
                 variables = variables.union(formula.variables)
             self.variables = variables
 
-    @classmethod
-    def fromString(string: str):
-        pass  # need to implement
 
     def __and__(self, other):
         return Formula(FT.AND, formulas=[self, other])
@@ -236,14 +233,14 @@ class Formula():
         if self.type is FT.VAR:
             return self.name
 
-        string = self.type.value + "("
+        string = self.type.name + "("
         first = True
         formula: Formula
         for formula in self.formulas:
             if not first:
                 string += ","
             first = False
-            string += Formula.toString()
+            string += formula.toString()
         string += ")"
         return string
 
@@ -270,6 +267,13 @@ class Formula():
             if f == formula:
                 return True
         return False
+
+    @classmethod
+    def deduce(f1: Formula, f2: Formula):
+        f3 = Formula(FT.OR, formulas=f1.formulas+f2.formulas)
+        f3.removeRedundantLiterals()
+        return f3
+
 
 def areEqualFormulas(f1: Formula, f2: Formula):
     if f1.type == f2.type:

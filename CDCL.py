@@ -1,5 +1,6 @@
 from Formula import Formula, FT
 from random import shuffle
+from ImplicationGraph import ImplicationGraph
 
 
 class CDCL:
@@ -10,6 +11,8 @@ class CDCL:
         self.watchLiterals = [[]] * len(formula.formulas)
         self.VSIDSScores = {}
         self.satisfied = [False] * len(formula.formulas)
+        self.graph = ImplicationGraph()
+        self.level = 0
         clause: Formula
 
         for index, clause in enumerate(formula.formulas):
@@ -31,7 +34,9 @@ class CDCL:
         literal = max({k: v for k, v in self.VSIDSScores if k.getName(
         ) not in self.partialAssignment.keys}, key=self.VSIDSScores.__getitem__)
         self.partialAssignment[literal.getName()] = literal.type == FT.VAR
-        # TODO - add decision to implication graph
+        self.level += 1
+        self.graph.addRoot(literal.getName(),
+                           literal.type == FT.VAR, self.level)
 
     # TODO - understand when to call
 
@@ -49,21 +54,21 @@ class CDCL:
             literal {Formula} -- literal to propagate
         """
         literal = None
+        index = 0
         for watchers in self.watchLiterals:
             if len(watchers) is 1:
                 literal = watchers[0]
                 break
+            index += 1
         if literal is None:
             return True
-        if literal.type is FT.VAR:
-            self.partialAssignment[literal.getName()] = True
-        else:
-            self.partialAssignment[literal.getName()] = False
+
+            self.partialAssignment[literal.getName()] = literal.type is FT.VAR
+            self.graph.addNode(literal.type is FT.VAR,
+                               self.formula[index], literal.getName())
 
         self._updateWatchLiterals(literal)
 
-        # TODO - add propagation to implication graph
-        
         clause: Formula
         for clause in self.formula:
             if clause.applyPartialAssignment(self.partialAssignment) is False:
