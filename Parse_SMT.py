@@ -4,11 +4,11 @@ logic = {"!": FT.NEG, "&&": FT.AND, "||": FT.OR, ">>": FT.IMPLIES, "==": FT.IFF}
 spacial_chars = "|&>="
 
 
-def push(obj, l, depth):
+def push(obj, lst, depth):
     while depth:
-        l = l[-1]
+        lst = lst[-1]
         depth -= 1
-    l.append(obj)
+    lst.append(obj)
 
 
 def parse_parentheses(smt: str):
@@ -33,6 +33,8 @@ def parse_parentheses(smt: str):
             cur += char
     if depth > 0:
         raise ValueError('Parentheses mismatch')
+    if cur:
+        groups.append(cur)
     return groups
 
 
@@ -78,14 +80,17 @@ def string_helper(s: str, t_parser):
         f = make_var(cur, neg, t_parser)
         subformulas.append(f)
         neg = False
+        if not type:
+            type = FT.VAR
     return type, subformulas, neg
 
 
-def parse_to_formula(l: list, t_parser):
+def parse_to_formula(lst: list, t_parser):
     subformulas = []
     type = None
     neg = False
-    for item in l:
+    neg_all = False
+    for item in lst:
         if isinstance(item, list):
             f = parse_to_formula(item, t_parser)
             if neg:
@@ -93,14 +98,21 @@ def parse_to_formula(l: list, t_parser):
                 neg = False
             subformulas.append(f)
         elif isinstance(item, str):
-            t, s, neg = string_helper(item, t_parser)
-            if not t:
+            if item == '!' and not subformulas:
+                neg = neg_all = True
+                continue
+            temp_type, formula, neg = string_helper(item, t_parser)
+            # if neg and not subformulas:
+            #     temp_type = FT.NEG
+            if not temp_type:
                 raise ValueError('Formula format mismatch')
             if not type:
-                type = t
-            elif type != t:
+                type = temp_type
+            elif type != temp_type:
                 raise ValueError('Formula type mismatch')
-            subformulas.extend(s)
+            subformulas.extend(formula)
+    if neg_all and not type:
+        return subformulas[0]
     if not type:
         raise ValueError('Formula format mismatch')
     return Formula(type, subformulas)
@@ -114,7 +126,7 @@ def foo(s):
     return s, s
 
 
-s = "[a||[b==[c>>d]]]&&![[d>>c]>[!a&&b]]"
+s = "![[a||[b==[c>>d]]]&&![[d>>c]>>[!a&&b]]]"
 # lst = parse_parentheses(a)
 # print(len(lst))
 # print(lst)
@@ -123,5 +135,8 @@ b = Formula(FT.VAR, varName="b", data="b")
 c = Formula(FT.VAR, varName="c", data="c")
 d = Formula(FT.VAR, varName="d", data="d")
 
-formula = (a | (Formula(FT.IFF, [b, d <= c]))) & -((-a & b) <= (c <= d))
+formula = -((a | (Formula(FT.IFF, [b, d <= c]))) & -((-a & b) <= (c <= d)))
 print(parse(s, foo) == formula)
+
+# s = "a=b"
+# print(parse(s, foo) == Formula(FT.VAR))

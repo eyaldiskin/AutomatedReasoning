@@ -44,24 +44,3 @@ class TData:
             if self.arguments[i] != other.arguments[i]:
                 return False
         return True
-
-    # def applyAssignment(self, assignment: dict):
-    #     if self.type is FT.VAR:
-    #         return assignment[self.name]
-    #     if self.type is FT.NEG:
-    #         return not self.formulas[0].applyAssignment(assignment)
-    #     if self.type is FT.AND:
-    #         return all([formula.applyAssignment(assignment) for formula in self.formulas])
-    #     if self.type is FT.OR:
-    #         return any([formula.applyAssignment(assignment) for formula in self.formulas])
-    #     first = self.formulas[0].applyAssignment(assignment)
-    #     second = self.formulas[1].applyAssignment(assignment)
-    #     if self.type is FT.IFF:
-    #         return first == second
-    #     if self.type is FT.IMPLIES:
-    #         return not (first and not second)
-    #
-    # def applyPartialAssignment(self, assignment: dict):
-    #     if len(self .variables - assignment.keys) > 0:
-    #         return True
-    #     return self.applyAssignment(assignment)
