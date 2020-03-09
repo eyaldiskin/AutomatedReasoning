@@ -38,7 +38,8 @@ class ImplicationGraph:
     def backjump(self, level):
         self.nodes = [node for node in self.nodes if node.level < level]
 
-    def findUIP(self, level, conflictNode: Node):
+    def findUIP(self, level):
+        conflictNode = self.nodes[-1]
         pushed = {node.variable: False for node in self.nodes}
         relevantChildren = {node.variable: 0 for node in self.nodes}
         relevantParents = {node.variable: 0 for node in self.nodes}
@@ -81,11 +82,11 @@ class ImplicationGraph:
             return inf
         return min([self.distance(src, parent) for parent in dest.parents]) + 1
 
-    def resolveConflict(self, conflictNode: Node, UIP: Node):
-        conflict = conflictNode.formula
+    def resolveConflict(self, UIP: Node):
+        conflict = self.nodes[-1].formula
         if UIP.varName not in conflict.variables:
             for node in reversed(self.nodes):
-                if node.varName in conflict.variable:
+                if node.varName in conflict.variables:
                     conflict = Formula.deduce(conflict, node.formula)
                     if UIP.varName in conflict.variables:
                         break
