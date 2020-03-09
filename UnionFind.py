@@ -106,14 +106,8 @@ class UnionFind:
         second_elem = self.elems[self.data_elems.index(second)].find()
         return first_elem == second_elem
 
-    # def find(self, elem):
-    #     if elem not in self.elems:
-    #         raise
-    #     root = elem
-    #     while root.parent != root:
-    #         root = root.parent
-    #     while elem.parent != root:
-    #         elem, elem.parent = elem.parent, root
+    def __contains__(self, data):
+        return data in self.data_elems
 
     def reset(self):
         for elem in self.elems:

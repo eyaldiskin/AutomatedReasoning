@@ -39,8 +39,7 @@ def parse_parentheses(smt: str):
 
 
 def make_var(cur, neg, t_parser):
-    data, name = t_parser(cur)
-    f = Formula(FT.VAR, varName=name, data=data)
+    f = Formula(FT.VAR, varName=cur, data=t_parser(cur))
     if neg:
         f = Formula(FT.NEG, [f])
     return f
@@ -61,8 +60,7 @@ def string_helper(s: str, t_parser):
                 elif type != logic[char * 2]:
                     raise ValueError('Formula type mismatch')
                 if cur:
-                    f = make_var(cur, neg, t_parser)
-                    subformulas.append(f)
+                    subformulas.append(make_var(cur, neg, t_parser))
                     neg = False
                     cur = ""
             elif flag == '':
@@ -77,8 +75,7 @@ def string_helper(s: str, t_parser):
             flag = ''
     cur += flag
     if cur:
-        f = make_var(cur, neg, t_parser)
-        subformulas.append(f)
+        subformulas.append(make_var(cur, neg, t_parser))
         neg = False
         if not type:
             type = FT.VAR

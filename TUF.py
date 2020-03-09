@@ -71,6 +71,11 @@ class TUF:
         right = self._parse_helper(formula[index + 1:len(formula)])[0]
         self.union_find.insert_element(left)
         self.union_find.insert_element(right)
+
+        # this part deals with the symmetry of equality
+        data = UFData(UFType.PRED, '=', [right, left])
+        if data in self.union_find:
+            return data
         return UFData(UFType.PRED, '=', [left, right])
 
     def _parse_helper(self, formula: str):
