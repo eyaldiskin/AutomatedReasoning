@@ -11,13 +11,13 @@ class _Element:
         # the information for the dependency DAG
         self.data = data
         self.args = args
-        self.dependencies = set()
-        self.default_dep = set()
+        self.dependencies = []
+        self.default_dep = []
         if args:
             for i in range(len(data.arguments)):
                 assert data.arguments[i] == args[i].data
-                args[i].dependencies.add(self)
-                args[i].default_dependencies.add(self)
+                args[i].dependencies.append(self)
+                args[i].default_dep.append(self)
 
     def __eq__(self, other):
         return self.data == other.data
@@ -37,8 +37,8 @@ class _Element:
         if my_root.rank == other_root.rank:
             my_root.rank += 1
         other_root.parent = my_root
-        my_root.dependencies |= other_root.dependencies
-        other_root.dependencies = set()
+        my_root.dependencies.extand(other_root.dependencies)
+        other_root.dependencies = []
 
     def is_congruence(self, other):
         if self.data.name != other.data.name:
@@ -53,7 +53,7 @@ class _Element:
     def reset(self):
         self.parent = self
         self.rank = 0
-        self.dependencies = set(self.default_dep)
+        self.dependencies = list(self.default_dep)
 
 
 class UnionFind:

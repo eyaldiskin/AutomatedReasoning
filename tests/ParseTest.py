@@ -5,6 +5,11 @@ import Parse_SMT
 
 class TestStringMethods(unittest.TestCase):
 
+    def test_one_var_no_theory(self):
+        a = Formula(FT.VAR, varName="a", data="a")
+        from_str = Parse_SMT.parse("a", lambda x: (x, x))
+        self.assertTrue(areEqualFormulas(a, from_str))
+
     def test_mixed_structure_no_theory(self):
         s = "[a||[b==[c>>d]]]&&![[d>>c]>>[!a&&b]]"
         a = Formula(FT.VAR, varName="a", data="a")

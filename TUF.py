@@ -7,6 +7,7 @@ class TUF:
         self.vars = dict()
         self.functions = dict()
         self.union_find = UnionFind()
+        self.equations = []
 
     # def _get_symbols(self, formula: Formula):
     #     if formula.type == Formula.FT.VAR:
@@ -38,15 +39,18 @@ class TUF:
     #         self._insert_symbol(argument)
 
     def conflict(self, eq_list, dif_list):
+        self.union_find.reset()
         for equation in eq_list:
             args = equation.arguments
             self.union_find.add_equation(args[0], args[1])
-        for equation in dif_list:
-            args = equation.arguments
+        for inequality in dif_list:
+            args = inequality.arguments
             if self.union_find.are_equal(args[0], args[1]):
-                self.union_find.reset()
-                return equation
-        self.union_find.reset()
+                conflict = [[inequality, True]]
+                for equation in eq_list:
+                    if self.union_find.are_equal(equation.arguments[0], args[0]):
+                        conflict.append([equation, False])
+                return conflict
         return None
 
     def propagate(self):
@@ -58,25 +62,21 @@ class TUF:
     # from here we deal with parsing
 
     def parse(self, formula: str):
-        rhs = False
-        index = 0
-        for i in range(len(formula)):
-            if formula[i] == '=':
-                if rhs:
-                    raise ValueError('Formula format mismatch')
-                rhs = True
-                index = i
-
-        left = self._parse_helper(formula[0:index])[0]
-        right = self._parse_helper(formula[index + 1:len(formula)])[0]
+        sides = formula.split("=")
+        if len(sides) != 2:
+            raise ValueError('Formula format mismatch')
+        left = self._parse_helper(sides[0])[0]
+        right = self._parse_helper(sides[1])[0]
         self.union_find.insert_element(left)
         self.union_find.insert_element(right)
 
         # this part deals with the symmetry of equality
         data = UFData(UFType.PRED, '=', [right, left])
-        if data in self.union_find:
-            return data
-        return UFData(UFType.PRED, '=', [left, right])
+        if data in self.equations:
+            return data, "=".join(reversed(sides))
+        data = UFData(UFType.PRED, '=', [left, right])
+        self.equations.append(data)
+        return data, formula
 
     def _parse_helper(self, formula: str):
         subformulas = []
