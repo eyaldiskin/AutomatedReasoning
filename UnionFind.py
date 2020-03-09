@@ -1,20 +1,23 @@
-from TData import *
+from UFData import *
 import Formula
 
 
 class _Element:
-    def __init__(self, data: TData, args: list = None):
+    def __init__(self, data: UFData, args: list = None):
         # the information for union-find alg
         self.parent = self
         self.rank = 0
+
         # the information for the dependency DAG
         self.data = data
         self.args = args
         self.dependencies = set()
+        self.default_dep = set()
         if args:
             for i in range(len(data.arguments)):
                 assert data.arguments[i] == args[i].data
                 args[i].dependencies.add(self)
+                args[i].default_dependencies.add(self)
 
     def __eq__(self, other):
         return self.data == other.data
@@ -47,33 +50,38 @@ class _Element:
                 return False
         return True
 
+    def reset(self):
+        self.parent = self
+        self.rank = 0
+        self.dependencies = set(self.default_dep)
+
 
 class UnionFind:
-    def __init__(self, formula: Formula):
+    def __init__(self):
         self.elems = []
         self.data_elems = []
-        self._get_elements(formula)
+        # self._get_elements(formula)
 
     def _get_elements(self, formula):
         if formula.type == Formula.FT.VAR:
-            self._insert_element(formula.data)
+            self.insert_element(formula.data)
             return
         for clause in formula.formulas:
             if clause.type == Formula.FT.VAR:
                 if getattr(clause, "data", None):
-                    self._insert_element(clause.data)
+                    self.insert_element(clause.data)
             else:
                 self._get_elements(clause)
 
-    def _insert_element(self, data: TData):
+    def insert_element(self, data: UFData):
         if data in self.data_elems:
             return self.elems[self.data_elems.index(data)]
-        if data.type == TType.VAR:
+        if data.type == UFType.VAR:
             elem = _Element(data)
         else:
             children = [None] * len(data.arguments)
             for i in range(len(data.arguments)):
-                children[i] = self._insert_element(data.arguments[i])
+                children[i] = self.insert_element(data.arguments[i])
             elem = _Element(data, children)
         self.data_elems.append(data)
         self.elems.append(elem)
@@ -93,11 +101,20 @@ class UnionFind:
                 if first_dep.is_congruence(second_dep):
                     self._add_equation_helper(first_dep, second_dep)
 
-    def find(self, elem):
-        if elem not in self.elems:
-            raise
-        root = elem
-        while root.parent != root:
-            root = root.parent
-        while elem.parent != root:
-            elem, elem.parent = elem.parent, root
+    def are_equal(self, first, second):
+        first_elem = self.elems[self.data_elems.index(first)].find()
+        second_elem = self.elems[self.data_elems.index(second)].find()
+        return first_elem == second_elem
+
+    # def find(self, elem):
+    #     if elem not in self.elems:
+    #         raise
+    #     root = elem
+    #     while root.parent != root:
+    #         root = root.parent
+    #     while elem.parent != root:
+    #         elem, elem.parent = elem.parent, root
+
+    def reset(self):
+        for elem in self.elems:
+            elem.reset()

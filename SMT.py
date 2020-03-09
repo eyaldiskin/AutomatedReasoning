@@ -1,6 +1,5 @@
 from CDCL import CDCL
 import Formula
-from TData import *
 import Parse_SMT
 
 
@@ -10,13 +9,17 @@ class SMT:
         self.cdcl = CDCL(Parse_SMT.parse(smt, theory.parse))
         self.M = []
 
-    def _T_conflict(F, M):
+    def conflict(self):
+        assignment = self.cdcl.partialAssignment
+        var_true = []
+        var_false = []
+        var_unknown = []
+        return self.theory.conflict(var_true, var_false)
+
+    def propagate(self):
         pass
 
-    def _T_propagate(F, M):
-        pass
-
-    def T_learn(self):
+    def _learn(self):
         pass
 
     def solve(self):

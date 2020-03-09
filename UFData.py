@@ -1,14 +1,14 @@
 from enum import Enum
 
 
-class TType(Enum):
+class UFType(Enum):
     VAR = 1
     FOO = 2
     PRED = 3
 
 
-class TData:
-    def __init__(self, type: TType, name, arguments: list = None):
+class UFData:
+    def __init__(self, type: UFType, name, arguments: list = None):
         """
         :param type: the type of this data - variable, function or predicate
         :param name: its' name, i.e. the name of f(x) is "f" and the name of x=y is "="
@@ -20,7 +20,7 @@ class TData:
             raise
         self.type = type
         self.name = name
-        if type == TType.VAR:
+        if type == UFType.VAR:
             self.variables = {name}
         else:
             self.arguments = arguments
@@ -38,7 +38,7 @@ class TData:
     def __eq__(self, other):
         if self.type != other.type or self.name != other.name:
             return False
-        if self.type == TType.VAR:
+        if self.type == UFType.VAR:
             return True
         for i in range(len(self.arguments)):
             if self.arguments[i] != other.arguments[i]:
