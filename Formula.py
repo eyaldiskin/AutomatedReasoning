@@ -17,20 +17,23 @@ class Formula():
         if type is None:
             raise
         self.type = type
-        if data is not None:
-            self.data = data
+        self.data = data
+
         if(type == FT.VAR):
             self.name = varName
             self.variables = {varName}
             self.tseitlin = tseitlin
             self.formulas = []
+            self.varFinder = {self.name: self}
         else:
             self.formulas = formulas
             variables = set()
+            varFinder = dict()
             for formula in formulas:
+                varFinder.update(formula.varFinder)
                 variables = variables.union(formula.variables)
+            self.varFinder = varFinder
             self.variables = variables
-
 
     def __and__(self, other):
         return Formula(FT.AND, formulas=[self, other])
@@ -264,12 +267,12 @@ class Formula():
 
     def __contains__(self, formula):
         for f in self.formulas:
-            if f == formula:
+            if areEqualFormulas(f, formula):
                 return True
         return False
 
     @classmethod
-    def deduce(f1: Formula, f2: Formula):
+    def deduce(cls, f1, f2):
         f3 = Formula(FT.OR, formulas=f1.formulas+f2.formulas)
         f3.removeRedundantLiterals()
         return f3

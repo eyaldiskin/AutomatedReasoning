@@ -61,17 +61,22 @@ class CDCL:
                 break
             index += 1
         if literal is None:
+            for clause in self.formula:
+                if clause.applyPartialAssignment(self.partialAssignment) is False:
+                    self.graph.addNode(None, clause, conflict=True)
             return True
 
-            self.partialAssignment[literal.getName()] = literal.type is FT.VAR
-            self.graph.addNode(literal.type is FT.VAR,
-                               self.formula[index], literal.getName())
+        self.partialAssignment[literal.getName()] = literal.type is FT.VAR
+        self.graph.addNode(literal.type is FT.VAR,
+                           self.formula[index], literal.getName())
 
         self._updateWatchLiterals(literal)
 
+        # probably needs oprimizing
         clause: Formula
         for clause in self.formula:
             if clause.applyPartialAssignment(self.partialAssignment) is False:
+                self.graph.addNode(None, clause, conflict=True)
                 return False
         return self._propagate()
 
@@ -90,13 +95,11 @@ class CDCL:
 
     # conflict analysis (UIP finder)
     def _explain(self):
+        uip = self.graph.findUIP(self.level)
+        return self.graph.resolveConflict(uip)
+
+    def _backjump(self, level):
         pass
 
-    def _backjump(self):
-        pass
-
-    def solveRec(self):
-        pass
-
-    def solve(self):
+    def solve(self, steps=-1):
         pass
