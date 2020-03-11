@@ -1,6 +1,7 @@
 from queue import Queue
 from math import inf
 from Formula import Formula
+from helper import secondLargest
 
 
 class Node:
@@ -24,8 +25,8 @@ class ImplicationGraph:
 
     def getParents(self, formula, varName):
         if varName:
-            return [node for node in self.nodes if node.variable is not varName and node.variable in formula.variables]
-        return [node for node in self.nodes if node.variable in formula.variables]
+            return [node for node in self.nodes if node.varName is not varName and node.varName in formula.variables]
+        return [node for node in self.nodes if node.varName in formula.variables]
 
     def addNode(self, value, formula, varName=None, conflict=False):
         if conflict:
@@ -40,9 +41,9 @@ class ImplicationGraph:
 
     def findUIP(self, level):
         conflictNode = self.nodes[-1]
-        pushed = {node.variable: False for node in self.nodes}
-        relevantChildren = {node.variable: 0 for node in self.nodes}
-        relevantParents = {node.variable: 0 for node in self.nodes}
+        pushed = {node.varName: False for node in self.nodes}
+        relevantChildren = {node.varName: 0 for node in self.nodes}
+        relevantParents = {node.varName: 0 for node in self.nodes}
         queue = Queue(len(self.nodes))
         queue.put(conflictNode)
 
@@ -53,30 +54,32 @@ class ImplicationGraph:
             node = queue.get()
             for parent in node.parents:
                 if parent.level == level:
-                    relevantParents[node.variable] += 1
-                    relevantChildren[parent.variable] += 1
-                    if not pushed[parent.variable]:
+                    relevantParents[node.varName] += 1
+                    relevantChildren[parent.varName] += 1
+                    if not pushed[parent.varName]:
                         queue.put(parent)
-                        pushed[parent.variable]
+                        pushed[parent.varName]
 
-        nodeScore = {node.variable: 0 for node in self.nodes}
+        nodeScore = {node.vvarName: 0 for node in self.nodes}
         queue.put(conflictNode)
         nodeScore[conflictNode] = 1
         while not queue.empty():
             node = queue.get()
-            parentScore = nodeScore[node.variable] / \
-                relevantParents[node.variable]
+            parentScore = nodeScore[node.varName] / \
+                relevantParents[node.varName]
             for parent in node.parents:
                 if parent.level == level:
-                    relevantChildren[parent.variable] -= 1
-                    nodeScore[parent.variable] += parentScore
-                    if relevantChildren[parent.variable] == 0:
+                    relevantChildren[parent.varName] -= 1
+                    nodeScore[parent.varName] += parentScore
+                    if relevantChildren[parent.varName] == 0:
+                        if nodeScore[parent.varName] == 1:
+                            return parent.varName
                         queue.put(parent)
 
-        return min([var for var in nodeScore.keys if var is not conflictNode.variable and nodeScore[var] == 1])
+        return min([var for var in nodeScore.keys if var is not conflictNode.varName and nodeScore[var] == 1])
 
     def distance(self, src: Node, dest: Node):
-        if src.variable == dest.variable:
+        if src.varName == dest.varName:
             return 0
         if len(dest.parents) is 0:
             return inf
@@ -90,4 +93,6 @@ class ImplicationGraph:
                     conflict = Formula.deduce(conflict, node.formula)
                     if UIP.varName in conflict.variables:
                         break
-        return conflict
+        backJumpLevel = secondLargest(
+            [node.level for node in self.nodes if node.varName in conflict.variables])
+        return (conflict, backJumpLevel)

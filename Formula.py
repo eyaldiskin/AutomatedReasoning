@@ -18,7 +18,7 @@ class Formula():
             raise
         self.type = type
         self.data = data
-
+        self.tseitlinVar = None
         if(type == FT.VAR):
             self.name = varName
             self.variables = {varName}
@@ -129,9 +129,13 @@ class Formula():
                             Formula(FT.AND, formulas=self.formulas) | inner for inner in formula.formulas]
                     break
         for formula in self.formulas:
-            formula.distributeAndOverOr()
+            formula.distributeOrOverAnd()
 
     def toTseitlin(self):
+        if self.isLiteral():
+            self.toCNF()
+            return
+
         tseitlinIndex = 1
         formulas = []
 
@@ -139,17 +143,17 @@ class Formula():
             nonlocal tseitlinIndex
             nonlocal formulas
             if not formula.isLiteral():
-                if not hasattr(formula, "tseitlinVar"):
+                if formula.tseitlinVar is None:
                     formula.tseitlinVar = Formula(
-                        FT.VAR, varName="_ts_" + tseitlinIndex, tseitlin=True)
+                        FT.VAR, varName="_ts_" + str(tseitlinIndex), tseitlin=True)
                     tseitlinIndex += 1
                 for inner in formula.formulas:
                     formula.tseitlinVar = Formula(
-                        FT.VAR, varName="_ts_" + tseitlinIndex, tseitlin=True)
+                        FT.VAR, varName="_ts_" + str(tseitlinIndex), tseitlin=True)
                     tseitlinIndex += 1
                     tseiltinRec(inner)
-                formulas.append(formula.tseitlinVar == Formula(formula.type, formulas=[
-                                inner.tseitlinVar if not inner.isLiteral() else inner for inner in formula.formulas]))
+                formulas.append(Formula(FT.IFF, [formula.tseitlinVar, Formula(formula.type, formulas=[
+                                inner.tseitlinVar if not inner.isLiteral() else inner for inner in formula.formulas])]))
 
         tseiltinRec(self)
         formulas.append(self.tseitlinVar)
@@ -247,6 +251,8 @@ class Formula():
         string += ")"
         return string
 
+    # TODO : might be excessive
+
     def __eq__(self, other):
         f1 = self
         f2 = other
@@ -256,6 +262,9 @@ class Formula():
             if not f1.applyAssignment(assignment) == f2.applyAssignment(assignment):
                 return False
         return True
+
+    def __hash__(self):
+        return self.toString().__hash__()
 
     def append(self, clause):
         """assumes clause doesn't have new variables
@@ -286,6 +295,15 @@ def areEqualFormulas(f1: Formula, f2: Formula):
                     return False
             return True
     return False
+
+
+def areEquivalentFormulas(f1: Formula, f2: Formula):
+    if not f1.variables == f2.variables:
+        return False
+    for assignment in getAssignmentGenerator(f1):
+        if not f1.applyAssignment(assignment) == f2.applyAssignment(assignment):
+            return False
+    return True
 
 
 def getAssignmentGenerator(formula):
