@@ -38,26 +38,101 @@ class TUF:
     #     for argument in data.arguments:
     #         self._insert_symbol(argument)
 
-    def conflict(self, eq_list, dif_list):
+    def _set_eq(self, eq_list):
         self.union_find.reset()
         for equation in eq_list:
             args = equation.arguments
             self.union_find.add_equation(args[0], args[1])
+
+    def conflict(self, eq_list, dif_list):
+        self._set_eq(eq_list)
         for inequality in dif_list:
             args = inequality.arguments
             if self.union_find.are_equal(args[0], args[1]):
                 conflict = [[inequality, True]]
                 for equation in eq_list:
-                    if self.union_find.are_equal(equation.arguments[0], args[0]):
-                        conflict.append([equation, False])
+                    conflict.append([equation, False])
                 return conflict
         return None
 
-    def propagate(self):
-        pass
+    def _find_implication(self, equation, eq_list):
+        """
+        find a local minimum of equations in eq_list that imply equation.
+        if eq_list doesn't imply equation, return None.
+        """
+        self._set_eq(eq_list)
+        args = equation.arguments
+        if not self.union_find.are_equal(args[0], args[1]):
+            return None
+        eq_lst_cpy = list(eq_list)
+        for eq in eq_list:
+            eq_lst_cpy.remove(eq)
+            self._set_eq(eq_list)
+            if not self.union_find.are_equal(args[0], args[1]):
+                eq_lst_cpy.append(eq)
+        return eq_lst_cpy
 
-    def learn(self):
-        pass
+    def _explain_true(self, data, level, eq_list, eq_levels, dif_list, dif_levels):
+        low_level_eq = [x for x in eq_list if eq_levels[eq_list.index(x)] < level]
+        low_level_dif = [x for x in dif_list if dif_levels[dif_list.index(x)] < level]
+        low_level_dif.append(data)
+        for equation in low_level_eq:
+            implication_list = self._find_implication(equation, low_level_dif)
+            if data in implication_list:
+                new_conflict = [[x, True] for x in implication_list if not x == data]
+                new_conflict.append([equation, False])
+                return new_conflict
+        return None
+
+    def _explain_false(self, data, level, dif_list, dif_levels):
+        low_level = [x for x in dif_list if dif_levels[dif_list.index(x)] < level]
+        implication_list = self._find_implication(data, low_level)
+        if implication_list:
+            return [[x, True] for x in implication_list]
+        return None
+
+    def explain(self, conflict, eq_list, dif_list, eq_levels, dif_levels):  # todo finish
+        new_conflict = []
+        remove_level = max(max(eq_levels), max(dif_levels)) + 1
+        to_remove = None
+        for constrain in conflict:
+            data, assignment = constrain
+            if assignment:
+                level = dif_levels[dif_list.index(data)]
+                if level < remove_level:
+                    new_conflict = self._explain_true(data, level, eq_list, eq_levels, dif_list, dif_levels)
+            else:
+                level = eq_levels[eq_list.index(data)]
+                if level < remove_level:
+                    new_conflict = self._explain_false(data, level, dif_list, dif_levels)
+            if new_conflict:
+                to_remove = constrain
+        if to_remove:
+            conflict.remove(to_remove)
+            conflict.extend(new_conflict)
+        return conflict
+
+    def propagate(self, eq_list, dif_list, unknown_list):
+        self._set_eq(eq_list)
+        deduced = []
+        to_check = []
+        for equation in unknown_list:
+            args = equation.arguments
+            if self.union_find.are_equal(args[0], args[1]):
+                deduced.append([equation, True])
+            else:
+                to_check.append(equation)
+
+        self.union_find.save()
+        for equation in to_check:
+            self.union_find.load()
+            args = equation.arguments
+            self.union_find.add_equation(args[0], args[1])
+            for inequality in dif_list:
+                args = inequality.arguments
+                if self.union_find.are_equal(args[0], args[1]):
+                    deduced.append([equation, False])
+        return deduced
 
     # from here we deal with parsing
 

@@ -125,22 +125,23 @@ def foo(s):
     return s, s
 
 
-s = "~[[a||[b==[c>>d]]]&&~[[d>>c]>>[~a&&b]]]"
-a = Formula(FT.VAR, varName="a", data="a")
-b = Formula(FT.VAR, varName="b", data="b")
-c = Formula(FT.VAR, varName="c", data="c")
-d = Formula(FT.VAR, varName="d", data="d")
+if __name__ == "__main__":
+    s = "~[[a||[b==[c>>d]]]&&~[[d>>c]>>[~a&&b]]]"
+    a = Formula(FT.VAR, varName="a", data="a")
+    b = Formula(FT.VAR, varName="b", data="b")
+    c = Formula(FT.VAR, varName="c", data="c")
+    d = Formula(FT.VAR, varName="d", data="d")
 
-# formula = -((a | (Formula(FT.IFF, [b, d <= c]))) & -((-a & b) <= (c <= d)))
-# print(parse(s, foo) == formula)
+    # formula = -((a | (Formula(FT.IFF, [b, d <= c]))) & -((-a & b) <= (c <= d)))
+    # print(parse(s, foo) == formula)
 
-# s = "a=b"
-# print(parse(s, foo) == Formula(FT.VAR))
+    # s = "a=b"
+    # print(parse(s, foo) == Formula(FT.VAR))
 
-x = Formula(FT.VAR, varName="f(f(x,y),z)=f(x,y)", data="d")
-y = Formula(FT.VAR, varName="f(x,y)=f(f(x,y),z)", data="d")
+    x = Formula(FT.VAR, varName="f(f(x,y),z)=f(x,y)", data="d")
+    y = Formula(FT.VAR, varName="f(x,y)=f(f(x,y),z)", data="d")
 
-t = TUF()
-# d = t.parse("f(f(x,y),z)=f(x,y)")
-s = "f(f(x,y),z)=f(x,y)&&f(x,y)=f(f(x,y),z)"
-print(parse(s, t.parse) == x & x)
+    t = TUF()
+    # d = t.parse("f(f(x,y),z)=f(x,y)")
+    s = "f(f(x,y),z)=f(x,y)&&f(x,y)=f(f(x,y),z)"
+    print(parse(s, t.parse) == x & x)

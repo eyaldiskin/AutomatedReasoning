@@ -1,5 +1,4 @@
 from UFData import *
-import Formula
 
 
 class _Element:
@@ -8,11 +7,16 @@ class _Element:
         self.parent = self
         self.rank = 0
 
+        # restoration data
+        self.default_dep = []
+        self.back_parent = None
+        self.back_rank = -1
+        self.back_dependencies = []
+
         # the information for the dependency DAG
         self.data = data
         self.args = args
         self.dependencies = []
-        self.default_dep = []
         if args:
             for i in range(len(data.arguments)):
                 assert data.arguments[i] == args[i].data
@@ -55,23 +59,22 @@ class _Element:
         self.rank = 0
         self.dependencies = list(self.default_dep)
 
+    def save(self):
+        self.back_parent = self.parent
+        self.back_rank = self.rank
+        self.back_dependencies = list(self.dependencies)
+
+    def load(self):
+        self.parent = self.back_parent
+        self.rank = self.back_rank
+        self.dependencies = list(self.back_dependencies)
+
 
 class UnionFind:
     def __init__(self):
         self.elems = []
         self.data_elems = []
         # self._get_elements(formula)
-
-    def _get_elements(self, formula):
-        if formula.type == Formula.FT.VAR:
-            self.insert_element(formula.data)
-            return
-        for clause in formula.formulas:
-            if clause.type == Formula.FT.VAR:
-                if getattr(clause, "data", None):
-                    self.insert_element(clause.data)
-            else:
-                self._get_elements(clause)
 
     def insert_element(self, data: UFData):
         if data in self.data_elems:
@@ -112,3 +115,11 @@ class UnionFind:
     def reset(self):
         for elem in self.elems:
             elem.reset()
+
+    def save(self):
+        for elem in self.elems:
+            elem.save()
+
+    def load(self):
+        for elem in self.elems:
+            elem.load()
