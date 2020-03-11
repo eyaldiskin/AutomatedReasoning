@@ -233,7 +233,7 @@ class Formula():
 
     def applyPartialAssignment(self, assignment: dict):
         # will probably be more efficient if variables and assignment.keys are sorted
-        if len(self .variables - assignment.keys) > 0:
+        if len(self .variables - assignment.keys()) > 0:
             return True
         return self.applyAssignment(assignment)
 
