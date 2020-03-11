@@ -176,13 +176,13 @@ class Formula():
         varMap = {}
         for literal in self.formulas:
             if literal.type is FT.VAR:
-                if literal.name in varMap:
-                    if varMap[literal.name] is False:
+                if literal.getName() in varMap:
+                    if varMap[literal.getName()] is False:
                         return True
                 else:
-                    varMap[literal.name] = True
+                    varMap[literal.getName()] = True
             else:
-                name = literal.formulas[0].name
+                name = literal.formulas[0].getName()
                 if name in varMap:
                     if varMap[name] is True:
                         return True
