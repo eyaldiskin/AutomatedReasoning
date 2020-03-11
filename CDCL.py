@@ -17,7 +17,7 @@ class CDCL:
         clause: Formula
 
         for index, clause in enumerate(formula.formulas):
-            shuffle(clause)
+            shuffle(clause.formulas)
             self.watchLiterals[index].append(clause[0])
             if len(clause.variables) > 1:
                 self.watchLiterals[index].append(clause[1])
