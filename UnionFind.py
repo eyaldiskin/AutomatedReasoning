@@ -11,24 +11,26 @@ class _Element:
         self.default_dep = []
         self.back_parent = None
         self.back_rank = -1
-        self.back_dependencies = []
+        self.back_dep = []
 
         # the information for the dependency DAG
         self.data = data
-        self.args = args
-        self.dependencies = []
+        self.dep = []
         if args:
+            self.args = args
             for i in range(len(data.arguments)):
                 assert data.arguments[i] == args[i].data
-                args[i].dependencies.append(self)
+                args[i].dep.append(self)
                 args[i].default_dep.append(self)
+        else:
+            self.args = []
 
     def __eq__(self, other):
         return self.data == other.data
 
     def find(self):
         if self.parent != self:
-            self.parent = self.find()
+            self.parent = self.parent.find()
         return self.parent
 
     def union(self, other):
@@ -41,14 +43,14 @@ class _Element:
         if my_root.rank == other_root.rank:
             my_root.rank += 1
         other_root.parent = my_root
-        my_root.dependencies.extand(other_root.dependencies)
-        other_root.dependencies = []
+        my_root.dep.extend([dep for dep in other_root.dep if dep not in my_root.dep])
+        other_root.dep = []
 
     def is_congruence(self, other):
-        if self.data.name != other.data.name:
-            return False
         if self.find() == other.find():
             return True
+        if self.data.name != other.data.name:
+            return False
         for i in range(len(self.args)):
             if self.args[i].find() != other.args[i].find():
                 return False
@@ -57,17 +59,17 @@ class _Element:
     def reset(self):
         self.parent = self
         self.rank = 0
-        self.dependencies = list(self.default_dep)
+        self.dep = list(self.default_dep)
 
     def save(self):
         self.back_parent = self.parent
         self.back_rank = self.rank
-        self.back_dependencies = list(self.dependencies)
+        self.back_dep = list(self.dep)
 
     def load(self):
         self.parent = self.back_parent
         self.rank = self.back_rank
-        self.dependencies = list(self.back_dependencies)
+        self.dep = list(self.back_dep)
 
 
 class UnionFind:
@@ -96,12 +98,12 @@ class UnionFind:
         self._add_equation_helper(first_elem, second_elem)
 
     def _add_equation_helper(self, first, second):
-        dependencies1 = first.dependencies
-        dependencies2 = second.dependencies
+        dep1 = list(first.dep)
+        dep2 = list(second.dep)
         first.union(second)
-        for first_dep in dependencies1:
-            for second_dep in dependencies2:
-                if first_dep.is_congruence(second_dep):
+        for first_dep in dep1:
+            for second_dep in dep2:
+                if first_dep.find() != second_dep.find() and first_dep.is_congruence(second_dep):
                     self._add_equation_helper(first_dep, second_dep)
 
     def are_equal(self, first, second):

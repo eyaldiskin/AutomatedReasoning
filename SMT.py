@@ -60,11 +60,26 @@ class SMT:
     def solve(self):
         pass
 
-import TUF
-if __name__ == "__main__":
-    s = "a=b&&f(a)=f(b)"
-    theory = TUF.TUF()
-    smt = SMT(s, theory)
-    var_true = [smt.cdcl.formula.varFinder["a=b"].data]
-    var_false = [smt.cdcl.formula.varFinder["f(a)=f(b)"].data]
-    conflict = theory.conflict(var_true, var_false)
+#
+# from TUF import *
+# if __name__ == "__main__":
+#     theory = TUF()
+#     parse = Parse_SMT.parse
+#     data1 = parse("a=b", theory.parse).data
+#     data2 = parse("b=c", theory.parse).data
+#     data3 = parse("g(f(a), b)=g(f(c), c)", theory.parse).data
+#     data4 = parse("g(f(a), b)=g(f(c), d)", theory.parse).data
+#     union_find = theory.union_find
+#     arg1 = data1.arguments
+#     arg2 = data2.arguments
+#     arg3 = data3.arguments
+#     arg4 = data4.arguments
+#     union_find.add_equation(arg1[0], arg1[1])
+#     union_find.add_equation(arg2[0], arg2[1])
+#     print(union_find.are_equal(arg3[0], arg3[1]))
+#     print(not union_find.are_equal(arg4[0], arg4[1]))
+#     union_find.save()
+#     union_find.reset()
+#     print(not union_find.are_equal(arg1[0], arg1[1]))
+#     union_find.load()
+#     print(union_find.are_equal(arg2[0], arg2[1]))

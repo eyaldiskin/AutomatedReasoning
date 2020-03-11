@@ -17,6 +17,8 @@ def parse_parentheses(smt: str):
     depth = 0
     cur = ""
     for char in smt:
+        if char == ' ':
+            continue
         if char == '[':
             if cur:
                 push(cur, groups, depth)

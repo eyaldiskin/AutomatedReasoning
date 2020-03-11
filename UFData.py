@@ -24,10 +24,9 @@ class UFData:
             self.variables = {name}
         else:
             self.arguments = arguments
-            variables = set()
+            self.variables = set()
             for data in arguments:
-                variables = variables.union(data.variables)
-            self.variables = variables
+                self.variables = self.variables.union(data.variables)
 
     def get_name(self):
         return self.name
@@ -44,3 +43,15 @@ class UFData:
             if self.arguments[i] != other.arguments[i]:
                 return False
         return True
+
+    def __str__(self):
+        if self.type == UFType.VAR:
+            return self.name
+        if self.type == UFType.PRED:
+            return str(self.arguments[0]) + self.name + str(self.arguments[1])
+
+        string = self.name + "("
+        for arg in self.arguments:
+            string += str(arg) + ","
+        string = string[:-1] + ")"
+        return string

@@ -49,9 +49,8 @@ class TUF:
         for inequality in dif_list:
             args = inequality.arguments
             if self.union_find.are_equal(args[0], args[1]):
-                conflict = [[inequality, True]]
-                for equation in eq_list:
-                    conflict.append([equation, False])
+                conflict = [[equation, False] for equation in eq_list]
+                conflict.append([inequality, True])
                 return conflict
         return None
 
@@ -60,6 +59,8 @@ class TUF:
         find a local minimum of equations in eq_list that imply equation.
         if eq_list doesn't imply equation, return None.
         """
+        if not eq_list or not equation:
+            return None
         self._set_eq(eq_list)
         args = equation.arguments
         if not self.union_find.are_equal(args[0], args[1]):
@@ -67,7 +68,7 @@ class TUF:
         eq_lst_cpy = list(eq_list)
         for eq in eq_list:
             eq_lst_cpy.remove(eq)
-            self._set_eq(eq_list)
+            self._set_eq(eq_lst_cpy)
             if not self.union_find.are_equal(args[0], args[1]):
                 eq_lst_cpy.append(eq)
         return eq_lst_cpy
@@ -78,7 +79,7 @@ class TUF:
         low_level_dif.append(data)
         for equation in low_level_eq:
             implication_list = self._find_implication(equation, low_level_dif)
-            if data in implication_list:
+            if implication_list and data in implication_list:
                 new_conflict = [[x, True] for x in implication_list if not x == data]
                 new_conflict.append([equation, False])
                 return new_conflict
@@ -93,23 +94,25 @@ class TUF:
 
     def explain(self, conflict, eq_list, dif_list, eq_levels, dif_levels):  # todo finish
         new_conflict = []
-        remove_level = max(max(eq_levels), max(dif_levels)) + 1
+        temp_conflict = None
+        remove_level = -1
         to_remove = None
         for constrain in conflict:
             data, assignment = constrain
             if assignment:
                 level = dif_levels[dif_list.index(data)]
-                if level < remove_level:
-                    new_conflict = self._explain_true(data, level, eq_list, eq_levels, dif_list, dif_levels)
+                if level > remove_level:
+                    temp_conflict = self._explain_true(data, level, eq_list, eq_levels, dif_list, dif_levels)
             else:
                 level = eq_levels[eq_list.index(data)]
-                if level < remove_level:
-                    new_conflict = self._explain_false(data, level, dif_list, dif_levels)
-            if new_conflict:
+                if level > remove_level:
+                    temp_conflict = self._explain_false(data, level, dif_list, dif_levels)
+            if temp_conflict:
                 to_remove = constrain
+                new_conflict = temp_conflict
         if to_remove:
             conflict.remove(to_remove)
-            conflict.extend(new_conflict)
+            conflict.extend([var for var in new_conflict if var not in conflict])
         return conflict
 
     def propagate(self, eq_list, dif_list, unknown_list):
@@ -204,8 +207,3 @@ class TUF:
             raise
         self.functions[name] = len(arg_list)
         return UFData(UFType.FOO, name, arg_list)
-
-
-# t = TUF()
-# d = t.parse("f(f(x,y),z)=f(x,y)")
-# print("hi")
