@@ -207,7 +207,7 @@ class Formula():
     def preprocess(self):
         self.toTseitlin()
         self.formulas = [
-            formula for formula in self.formulas if not formula.isRedundant()]
+            formula for formula in self.formulas if not formula.isRedundantFormula()]
         for clause in self.formulas:
             clause.removeRedundantLiterals()
 
