@@ -17,18 +17,18 @@ class CDCL:
         clause: Formula
 
         for index, clause in enumerate(formula.formulas):
-            shuffle(clause)
+            shuffle(clause.formulas)
             self.watchLiterals[index].append(clause[0])
             if len(clause.variables) > 1:
                 self.watchLiterals[index].append(clause[1])
             literal: Formula
             for literal in clause:
-                if literal in self.clauseFinder.keys:
+                if literal in self.clauseFinder.keys():
                     self.clauseFinder[literal].append(index)
                 else:
                     self.clauseFinder[literal] = [index]
 
-                if literal in self.VSIDSScores.keys:
+                if literal in self.VSIDSScores.keys():
                     self.VSIDSScores[literal] += 1
                 else:
                     self.VSIDSScores[literal] = 1
@@ -38,7 +38,7 @@ class CDCL:
     def _decide(self):
         literal: Formula
         literal = max({k: v for k, v in self.VSIDSScores if k.getName(
-        ) not in self.partialAssignment.keys}, key=self.VSIDSScores.__getitem__)
+        ) not in self.partialAssignment.keys()}, key=self.VSIDSScores.__getitem__)
         self.partialAssignment[literal.getName()] = literal.type == FT.VAR
         for index in self.clauseFinder[literal]:
             self.satisfied[index] = True
@@ -102,7 +102,7 @@ class CDCL:
                     self.watchLiterals[index] = [watcher.getName(
                     ) for watcher in watchers if watcher.getName() != literal.getName()]
                     for literal in self.formula[index]:
-                        if literal.getName() not in self.partialAssignment.keys and literal.getName() is not watchers[0]:
+                        if literal.getName() not in self.partialAssignment.keys() and literal.getName() is not watchers[0]:
                             self.watchLiterals[index].append(literal.getName())
                             break
 
@@ -131,7 +131,7 @@ class CDCL:
             if not self.satisfied[index]:
                 shuffle(clause)
                 relevant = [lit for lit in clause.formulas if lit.getName(
-                ) not in self.partialAssignment.keys]
+                ) not in self.partialAssignment.keys()]
                 self.watchLiterals[index].append(relevant[0])
                 if len(relevant) > 1:
                     self.watchLiterals[index].append(relevant[1])
