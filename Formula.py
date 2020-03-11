@@ -60,7 +60,7 @@ class Formula():
                     formulas += formula.formulas
                 else:
                     formulas += [formula]
-        self.formulas = formulas
+            self.formulas = formulas
 
     def getName(self):
         """
@@ -156,19 +156,23 @@ class Formula():
                                 inner.tseitlinVar if not inner.isLiteral() else inner for inner in formula.formulas])]))
 
         tseiltinRec(self)
-        formulas.append(self.tseitlinVar)
+        formulas.append(Formula(FT.OR, [self.tseitlinVar]))
         tseitlinFormula = Formula(FT.AND, formulas=formulas)
         self.type = FT.AND
         self.formulas = tseitlinFormula.formulas
         self.variables = tseitlinFormula.variables
         for formula in self.formulas:
             formula.toCNF()
+        self.varFinder = tseitlinFormula.varFinder
         self.flatten()
 
     def isRedundantFormula(self):
         """
         should be run on CNF clauses only, unexpected behavior overwise
         """
+        if self.isLiteral():
+            return False
+
         varMap = {}
         for literal in self.formulas:
             if literal.type is FT.VAR:
@@ -207,7 +211,7 @@ class Formula():
     def preprocess(self):
         self.toTseitlin()
         self.formulas = [
-            formula for formula in self.formulas if not formula.isRedundant()]
+            formula for formula in self.formulas if not formula.isRedundantFormula()]
         for clause in self.formulas:
             clause.removeRedundantLiterals()
 
