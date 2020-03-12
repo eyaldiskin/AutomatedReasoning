@@ -509,13 +509,8 @@ class Arithmatics_solver:
 
         return result
 
-    def T_explain(self, true_constraints, false_constraints):
-        result = []
-        for t in true_constraints:
-            result += [[t,True]]
-
-        for f in false_constraints:
-            result += [[f,False]]
+    def T_explain(self, conflict, eq_list, dif_list, eq_levels, dif_levels):
+        return conflict
 
 
 def main():
