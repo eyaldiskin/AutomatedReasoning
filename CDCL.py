@@ -15,7 +15,7 @@ class CDCL:
         self.satisfied = [False] * len(formula.formulas)
         self.graph = ImplicationGraph()
         self.level = 0
-        self.totalSteps =0 
+        self.totalSteps = 0
         clause: Formula
 
         for index, clause in enumerate(formula.formulas):
@@ -63,8 +63,7 @@ class CDCL:
         self.satisfied.append(False)
         for literal in clause.formulas:
             self.clauseFinder[literal].append(len(self.satisfied) - 1)
-            self.VSIDSScores[literal] +=1
-        
+            self.VSIDSScores[literal] += 1
 
     def _propagate(self):
         """
@@ -73,7 +72,7 @@ class CDCL:
             literal {Formula} -- literal to propagate
         """
         literal = None
-        for index ,watchers in enumerate(self.watchLiterals):
+        for index, watchers in enumerate(self.watchLiterals):
             if len(watchers) is 1 and not self.satisfied[index]:
                 literal = watchers[0]
                 break
@@ -124,12 +123,13 @@ class CDCL:
         self.graph.backjump(level)
         self.level = level
         self.partialAssignment = {var: self.partialAssignment[var] for var in self.partialAssignment if var in [
-            node.getName() for node in self.graph.nodes]}
+            node.varName for node in self.graph.nodes]}
         self.satisfied = [False] * len(self.formula.formulas)
         # create satisfied list
-        for var, val in self.partialAssignment:
+        for var in self.partialAssignment:
+            val = self.partialAssignment[var]
             if val:
-                for index in self.clauseFinder[self.formula.varFinder("var")]:
+                for index in self.clauseFinder[self.formula.varFinder[var]]:
                     self.satisfied[index] = True
             else:
                 for index in self.clauseFinder[Formula(FT.NEG, [self.formula.varFinder("var")])]:
@@ -161,9 +161,21 @@ class CDCL:
             if len([sat for sat in self.satisfied if sat]) is 0:
                 return True
             steps -= 1
-            self.totalSteps +=1
+            self.totalSteps += 1
             if self.totalSteps % 5 == 0:
                 self._VSIDSDivideScores()
         return None
+
+    def assign(self, variable, value):
+        self.partialAssignment[variable.getName()] = value
+        self._updateWatchLiterals(variable)
+        if not value:
+            variable = -variable
+        for index in self.clauseFinder[variable]:
+            self.satisfied[index] = True
+
+    def learnConflict(self, conflictClause):
+        self._learn(conflictClause)
+        self._backjump(self.graph.getSecondLargestLevel(conflictClause))
 
 # TODO - add "assign" and "learnConflict" for SMT

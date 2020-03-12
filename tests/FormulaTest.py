@@ -26,6 +26,21 @@ class TestFormula(unittest.TestCase):
         explicit = -self.var1 | self.var2
         self.assertTrue(areEquivalentFormulas(implicit, explicit))
 
+    def test_distribute_1(self):
+        form = self.var0 | (self.var1 & self.var2)
+        form.distributeOrOverAnd()
+        print(form.toString())
+
+    def test_distribute_2(self):
+        form = (self.var1 & self.var2) | self.var0
+        form.distributeOrOverAnd()
+        print(form.toString())
+
+    def test_distribute_3(self):
+        form = self.var3 | (self.var0 | (self.var1 & self.var2))
+        form.distributeOrOverAnd()
+        print(form.toString())
+
     def test_flatten_1(self):
         and1 = self.var0 & self.var1
         and2 = self.var2 & and1
@@ -43,26 +58,65 @@ class TestFormula(unittest.TestCase):
         self.assertTrue(areEquivalentFormulas(and3, and3flat))
         self.assertTrue(len(and3flat.formulas) is 4)
 
-    def test_cnf_1(self):
+    def test_cnf_no_exception(self):
         try:
             self.var0.toCNF()
         except Exception as e:
             self.fail(str(e))
 
-    def test_nnf_1(self):
+    def test_cnf_1(self):
+        form = Formula(FT.IFF, [self.var0, Formula(
+            FT.IFF, [self.var1, self.var2])])
+        formCNF = Formula(
+            FT.IFF, [self.var0, Formula(FT.IFF, [self.var1, self.var2])])
+        formCNF.toCNF()
+        print(formCNF.toString())
+        self.assertTrue(areEquivalentFormulas(form, formCNF))
+
+    def test_nnf__no_exception(self):
         try:
             self.var0.toNNF()
         except Exception as e:
             self.fail(str(e))
 
-    def test_tseitlin_1(self):
+    def test_remove_implications_1(self):
+        form = Formula(FT.IFF, [self.var1, self.var2])
+        form.eliminateImplications()
+        print(form.toString())
+
+    def test_remove_implications_2(self):
+        form = Formula(FT.IFF, [self.var0, Formula(
+            FT.IFF, [self.var1, self.var2])])
+        form.eliminateImplications()
+        print(form.toString())
+
+    def test_nnf_1(self):
+        form = Formula(FT.IFF, [self.var1, self.var2])
+        form.toNNF()
+        print(form.toString())
+
+    def test_nnf_2(self):
+        form = Formula(FT.IFF, [self.var0, Formula(
+            FT.IFF, [self.var1, self.var2])])
+        formNNF = Formula(
+            FT.IFF, [self.var0, Formula(FT.IFF, [self.var1, self.var2])])
+        formNNF.toNNF()
+        print(formNNF.toString())
+        self.assertTrue(areEquivalentFormulas(form, formNNF))
+
+    def test_tseitlin_no_exception(self):
         try:
             form = self.var0 & self.var1
             form.toTseitlin()
             print(form.toString())
         except Exception as e:
-            self.fail(str(e))  
-        
+            self.fail(str(e))
+
+    def test_tseitlin_1(self):
+        form = Formula(FT.IFF, [self.var0, self.var1]) & Formula(
+            FT.IFF, [self.var2, self.var3])
+        form.toTseitlin()
+        print()
 
 
 if __name__ == '__main__':

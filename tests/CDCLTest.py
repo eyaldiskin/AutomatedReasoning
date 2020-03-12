@@ -2,6 +2,7 @@ import unittest
 from Formula import Formula, FT, areEquivalentFormulas
 from CDCL import CDCL
 
+
 class TestCDCL(unittest.TestCase):
 
     def setUp(self):
@@ -20,7 +21,7 @@ class TestCDCL(unittest.TestCase):
         try:
             form = self.var0 & self.var1
             solver = CDCL(form)
-            
+
         except Exception as e:
             self.fail(str(e))
 
@@ -29,7 +30,7 @@ class TestCDCL(unittest.TestCase):
             form = self.var0 & self.var1
             solver = CDCL(form)
             solver.solve()
-            
+
         except Exception as e:
             self.fail(str(e))
 
@@ -40,7 +41,7 @@ class TestCDCL(unittest.TestCase):
         self.assertTrue(out)
         self.assertTrue(solver.partialAssignment["var0"])
         self.assertTrue(solver.partialAssignment["var1"])
-            
+
     def test_CDCL_solve_2(self):
         form = self.var0 & -self.var0
         solver = CDCL(form)
@@ -48,12 +49,24 @@ class TestCDCL(unittest.TestCase):
         self.assertFalse(out)
 
     def test_CDCL_solve_3(self):
-        form = (self.var0 | self.var1) & ( -self.var0 | -self.var1 ) & (self.var0 | -self.var1)
+        form = (self.var0 | self.var1) & (-self.var0 | -
+                                          self.var1) & (self.var0 | -self.var1)
         solver = CDCL(form)
         out = solver.solve()
         self.assertTrue(out)
         self.assertTrue(solver.partialAssignment["var0"])
         self.assertFalse(solver.partialAssignment["var1"])
+
+    def test_CDCL_solve_4(self):
+        form = Formula(FT.IFF, [self.var0, self.var1]) & Formula(
+            FT.IFF, [self.var2, self.var3])
+        solver = CDCL(form)
+        out = solver.solve()
+        self.assertTrue(out)
+        self.assertEqual(
+            solver.partialAssignment["var0"], solver.partialAssignment["var1"])
+        self.assertEqual(
+            solver.partialAssignment["var2"], solver.partialAssignment["var3"])
 
 
 if __name__ == '__main__':

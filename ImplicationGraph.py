@@ -24,9 +24,9 @@ class ImplicationGraph:
         self.nodes.append(node)
 
     def getParents(self, formula, varName):
-        parents = [node for node in self.nodes if not node.varName == varName and node.varName in formula.variables]
+        parents = [node for node in self.nodes if not node.varName ==
+                   varName and node.varName in formula.variables]
         return parents
-        
 
     def addNode(self, value, formula, varName=None, conflict=False):
         if conflict:
@@ -81,6 +81,10 @@ class ImplicationGraph:
                         queue.put(parent)
 
         return min([var for var in nodeScore.keys if var is not conflictNode.varName and nodeScore[var] == 1])
+
+    def getSecondLargestLevel(self, conflict):
+        return secondLargest(
+            [node.level for node in self.nodes if node.varName in conflict.variables])
 
     def distance(self, src: Node, dest: Node):
         if src.varName == dest.varName:
