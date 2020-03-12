@@ -15,6 +15,7 @@ class CDCL:
         self.satisfied = [False] * len(formula.formulas)
         self.graph = ImplicationGraph()
         self.level = 0
+        self.totalSteps =0 
         clause: Formula
 
         for index, clause in enumerate(formula.formulas):
@@ -56,11 +57,14 @@ class CDCL:
         self.VSIDSScores = {k: v/2 for k, v in self.VSIDSScores.values}
 
     def _learn(self, clause):
+        print("learned "+clause.toString())
         self.formula.append(clause)
         self.watchLiterals.append([])
         self.satisfied.append(False)
-        for literal in clause:
+        for literal in clause.formulas:
             self.clauseFinder[literal].append(len(self.satisfied) - 1)
+            self.VSIDSScores[literal] +=1
+        
 
     def _propagate(self):
         """
@@ -74,7 +78,6 @@ class CDCL:
                 literal = watchers[0]
                 break
         # maybe move this to _decide?
-        print()
         if literal is None:
             for index, clause in enumerate(self.formula.formulas):
                 if not self.satisfied[index]:
@@ -117,9 +120,10 @@ class CDCL:
         return self.graph.resolveConflict(uip)
 
     def _backjump(self, level):
+        print("backjump to " + str(level))
         self.graph.backjump(level)
         self.level = level
-        self.partialAssignment = {var: val for var, val in self.partialAssignment if var in [
+        self.partialAssignment = {var: self.partialAssignment[var] for var in self.partialAssignment if var in [
             node.getName() for node in self.graph.nodes]}
         self.satisfied = [False] * len(self.formula.formulas)
         # create satisfied list
@@ -133,7 +137,7 @@ class CDCL:
         # update watch literals
         for index, clause in enumerate(self.formula.formulas):
             if not self.satisfied[index]:
-                shuffle(clause)
+                shuffle(clause.formulas)
                 relevant = [lit for lit in clause.formulas if lit.getName(
                 ) not in self.partialAssignment.keys()]
                 self.watchLiterals[index].append(relevant[0])
@@ -157,6 +161,9 @@ class CDCL:
             if len([sat for sat in self.satisfied if sat]) is 0:
                 return True
             steps -= 1
+            self.totalSteps +=1
+            if self.totalSteps % 5 == 0:
+                self._VSIDSDivideScores()
         return None
 
 # TODO - add "assign" and "learnConflict" for SMT

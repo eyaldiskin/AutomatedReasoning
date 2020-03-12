@@ -2,7 +2,7 @@ import unittest
 from Formula import Formula, FT, areEquivalentFormulas
 
 
-class TestStringMethods(unittest.TestCase):
+class TestFormula(unittest.TestCase):
 
     def setUp(self):
         self.var0 = Formula(FT.VAR, varName="var0")
@@ -43,7 +43,26 @@ class TestStringMethods(unittest.TestCase):
         self.assertTrue(areEquivalentFormulas(and3, and3flat))
         self.assertTrue(len(and3flat.formulas) is 4)
 
+    def test_cnf_1(self):
+        try:
+            self.var0.toCNF()
+        except Exception as e:
+            self.fail(str(e))
 
+    def test_nnf_1(self):
+        try:
+            self.var0.toNNF()
+        except Exception as e:
+            self.fail(str(e))
+
+    def test_tseitlin_1(self):
+        try:
+            form = self.var0 & self.var1
+            form.toTseitlin()
+            print(form.toString())
+        except Exception as e:
+            self.fail(str(e))  
+        
 
 
 if __name__ == '__main__':
