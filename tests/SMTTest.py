@@ -95,3 +95,15 @@ class TestStringMethods(unittest.TestCase):
         my_exp = [[x, False] for x in var_true[:-1]]
         my_exp.append([smt.cdcl.formula.varFinder["f(a)=f(c)"].data, True])
         self.assertTrue(exp == my_exp)
+
+    def test_basic_TUF_solve(self):
+        s = "a=b&&b=c&&c=a"
+        theory = TUF()
+        smt = SMT(s, theory)
+        self.assertTrue(smt.solve() == "") # todo by solve format
+
+    def test_basic_TUF_conflict(self):
+        s = "a=b&&b=c&&~c=a"
+        theory = TUF()
+        smt = SMT(s, theory)
+        self.assertTrue(not smt.solve())
