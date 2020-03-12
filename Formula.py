@@ -162,13 +162,10 @@ class Formula():
         self.type = FT.AND
         self.formulas = tseitlinFormula.formulas
         self.variables = tseitlinFormula.variables
-        print(self.toString())
         for formula in self.formulas:
             formula.toCNF()
         self.varFinder = tseitlinFormula.varFinder
-        print(self.toString())
         self.flatten()
-        print()
 
     def isRedundantFormula(self):
         """
@@ -289,8 +286,10 @@ class Formula():
         return False
 
     @classmethod
-    def deduce(cls, f1, f2):
-        f3 = Formula(FT.OR, formulas=f1.formulas+f2.formulas)
+    def deduce(cls, f1, f2, literal):
+        print("remove ruedunt")
+        f3 = Formula(FT.OR, formulas=[lit for lit in f1.formulas if lit.getName(
+        ) != literal]+[lit for lit in f2.formulas if lit.getName() != literal])
         f3.removeRedundantLiterals()
         return f3
 

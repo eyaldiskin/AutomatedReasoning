@@ -6,7 +6,6 @@ from ImplicationGraph import ImplicationGraph
 class CDCL:
     def __init__(self, formula: Formula):
         formula.preprocess()
-        print(formula.toString())
         self.formula = formula
         self.partialAssignment = {}
         self.clauseFinder = {}
@@ -54,7 +53,7 @@ class CDCL:
     # TODO - understand when to call
 
     def _VSIDSDivideScores(self):
-        self.VSIDSScores = {k: v/2 for k, v in self.VSIDSScores.values}
+        self.VSIDSScores = {k: self.VSIDSScores[k]/2 for k in self.VSIDSScores}
 
     def _learn(self, clause):
         print("learned "+clause.toString())
@@ -72,9 +71,11 @@ class CDCL:
             literal {Formula} -- literal to propagate
         """
         literal = None
+        selected = 0
         for index, watchers in enumerate(self.watchLiterals):
             if len(watchers) is 1 and not self.satisfied[index]:
                 literal = watchers[0]
+                selected = index
                 break
         # maybe move this to _decide?
         if literal is None:
@@ -90,7 +91,7 @@ class CDCL:
             self.satisfied[index] = True
 
         self.graph.addNode(literal.type is FT.VAR,
-                           self.formula[index], literal.getName())
+                           self.formula[selected], literal.getName())
 
         self._updateWatchLiterals(literal)
 
@@ -116,6 +117,7 @@ class CDCL:
 
     def _explain(self):
         uip = self.graph.findUIP(self.level)
+        print("UIP " + uip.varName)
         return self.graph.resolveConflict(uip)
 
     def _backjump(self, level):
@@ -135,6 +137,7 @@ class CDCL:
                 for index in self.clauseFinder[Formula(FT.NEG, [self.formula.varFinder("var")])]:
                     self.satisfied[index] = True
         # update watch literals
+        self.watchLiterals = [[] for i in range(len(self.formula.formulas))]
         for index, clause in enumerate(self.formula.formulas):
             if not self.satisfied[index]:
                 shuffle(clause.formulas)
@@ -143,6 +146,7 @@ class CDCL:
                 self.watchLiterals[index].append(relevant[0])
                 if len(relevant) > 1:
                     self.watchLiterals[index].append(relevant[1])
+        print()
 
     def solve(self, steps=-1, onlyPropagate=False):
         while steps != 0:
@@ -158,7 +162,7 @@ class CDCL:
             if onlyPropagate:
                 break
             self._decide()
-            if len([sat for sat in self.satisfied if sat]) is 0:
+            if len([sat for sat in self.satisfied if not sat]) is 0:
                 return True
             steps -= 1
             self.totalSteps += 1
