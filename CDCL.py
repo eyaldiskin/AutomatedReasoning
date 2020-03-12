@@ -6,10 +6,11 @@ from ImplicationGraph import ImplicationGraph
 class CDCL:
     def __init__(self, formula: Formula):
         formula.preprocess()
+        print(formula.toString())
         self.formula = formula
         self.partialAssignment = {}
         self.clauseFinder = {}
-        self.watchLiterals = [[]] * len(formula.formulas)
+        self.watchLiterals = [[] for i in range(len(formula.formulas))]
         self.VSIDSScores = {}
         self.satisfied = [False] * len(formula.formulas)
         self.graph = ImplicationGraph()
@@ -22,7 +23,7 @@ class CDCL:
             if len(clause.variables) > 1:
                 self.watchLiterals[index].append(clause[1])
             literal: Formula
-            for literal in clause:
+            for literal in clause.formulas:
                 if literal in self.clauseFinder.keys():
                     self.clauseFinder[literal].append(index)
                 else:
@@ -37,14 +38,17 @@ class CDCL:
 
     def _decide(self):
         literal: Formula
-        literal = max({k: v for k, v in self.VSIDSScores if k.getName(
-        ) not in self.partialAssignment.keys()}, key=self.VSIDSScores.__getitem__)
+        unassigned = {k: self.VSIDSScores[k] for k in self.VSIDSScores.keys(
+        ) if k.getName() not in self.partialAssignment.keys()}
+        literal = max(unassigned, key=unassigned.get)
+        print("decided " + literal.toString())
         self.partialAssignment[literal.getName()] = literal.type == FT.VAR
         for index in self.clauseFinder[literal]:
             self.satisfied[index] = True
         self.level += 1
         self.graph.addRoot(literal.getName(),
                            literal.type == FT.VAR, self.level)
+        self._updateWatchLiterals(literal)
 
     # TODO - understand when to call
 
@@ -65,18 +69,19 @@ class CDCL:
             literal {Formula} -- literal to propagate
         """
         literal = None
-        for watchers in self.watchLiterals:
-            if len(watchers) is 1:
+        for index ,watchers in enumerate(self.watchLiterals):
+            if len(watchers) is 1 and not self.satisfied[index]:
                 literal = watchers[0]
                 break
         # maybe move this to _decide?
+        print()
         if literal is None:
-            for index, clause in enumerate(self.formula):
+            for index, clause in enumerate(self.formula.formulas):
                 if not self.satisfied[index]:
                     if clause.applyPartialAssignment(self.partialAssignment) is False:
                         self.graph.addNode(None, clause, conflict=True)
             return True
-
+        print("propagated " + literal.toString())
         self.partialAssignment[literal.getName()] = literal.type is FT.VAR
 
         for index in self.clauseFinder[literal]:
@@ -89,22 +94,21 @@ class CDCL:
 
         # probably needs oprimizing
         clause: Formula
-        for clause in self.formula:
+        for clause in self.formula.formulas:
             if clause.applyPartialAssignment(self.partialAssignment) is False:
                 self.graph.addNode(None, clause, conflict=True)
                 return False
         return self._propagate()
 
-    def _updateWatchLiterals(self, literal: Formula):
+    def _updateWatchLiterals(self, literalSelected: Formula):
         for index, watchers in enumerate(self.watchLiterals):
-            if not self.satisfied[index]:
-                if literal.getName() in [watcher.getName() for watcher in watchers]:
-                    self.watchLiterals[index] = [watcher.getName(
-                    ) for watcher in watchers if watcher.getName() != literal.getName()]
-                    for literal in self.formula[index]:
-                        if literal.getName() not in self.partialAssignment.keys() and literal.getName() is not watchers[0]:
-                            self.watchLiterals[index].append(literal.getName())
-                            break
+            if literalSelected.getName() in [watcher.getName() for watcher in watchers]:
+                self.watchLiterals[index] = [
+                    watcher for watcher in watchers if not watcher.getName() == literalSelected.getName()]
+                for literal in self.formula[index].formulas:
+                    if literal.getName() not in self.partialAssignment.keys() and not literal in watchers:
+                        self.watchLiterals[index].append(literal)
+                        break
 
     # conflict analysis (UIP finder)
 
@@ -138,14 +142,14 @@ class CDCL:
 
     def solve(self, steps=-1, onlyPropagate=False):
         while steps != 0:
-            if not self._propagate:
+            if not self._propagate():
                 if self.level is 0:
                     return False
                 conflict, level = self._explain()
                 self._learn(conflict)
                 self._backjump(level)
                 continue
-            if len([sat for sat in self.satisfied if sat]) is 0:
+            if len([sat for sat in self.satisfied if not sat]) is 0:
                 return True
             if onlyPropagate:
                 break

@@ -31,8 +31,12 @@ class ImplicationGraph:
     def addNode(self, value, formula, varName=None, conflict=False):
         if conflict:
             varName = "__conflict__"
+
         parents = self.getParents(formula, varName)
-        level = max([parent.level for parent in parents])
+        if len(parents) == 0:
+            level = 0
+        else:
+            level = max([parent.level for parent in parents])
         node = Node(varName, value, level, conflict)
         self.nodes.append(node)
 
