@@ -15,7 +15,7 @@ class CDCL:
         self.satisfied = [False] * len(formula.formulas)
         self.graph = ImplicationGraph()
         self.level = 0
-        self.totalSteps =0 
+        self.totalSteps = 0
         clause: Formula
 
         for index, clause in enumerate(formula.formulas):
@@ -63,8 +63,7 @@ class CDCL:
         self.satisfied.append(False)
         for literal in clause.formulas:
             self.clauseFinder[literal].append(len(self.satisfied) - 1)
-            self.VSIDSScores[literal] +=1
-        
+            self.VSIDSScores[literal] += 1
 
     def _propagate(self):
         """
@@ -73,7 +72,7 @@ class CDCL:
             literal {Formula} -- literal to propagate
         """
         literal = None
-        for index ,watchers in enumerate(self.watchLiterals):
+        for index, watchers in enumerate(self.watchLiterals):
             if len(watchers) is 1 and not self.satisfied[index]:
                 literal = watchers[0]
                 break
@@ -162,7 +161,7 @@ class CDCL:
             if len([sat for sat in self.satisfied if sat]) is 0:
                 return True
             steps -= 1
-            self.totalSteps +=1
+            self.totalSteps += 1
             if self.totalSteps % 5 == 0:
                 self._VSIDSDivideScores()
         return None

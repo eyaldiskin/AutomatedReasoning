@@ -118,7 +118,7 @@ class Formula():
     def distributeOrOverAnd(self):
         for formula in self.formulas:
             formula.distributeOrOverAnd()
-        
+
         if self.type == FT.OR:
             for index, formula in enumerate(self.formulas):
                 if formula.type is FT.AND:
@@ -131,9 +131,6 @@ class Formula():
                         self.formulas = [
                             Formula(FT.AND, formulas=self.formulas) | inner for inner in formula.formulas]
                     break
-                
-        
-        
 
     def toTseitlin(self):
         if self.isLiteral():
