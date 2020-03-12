@@ -10,7 +10,7 @@ class Node:
         self.value = value
         self.level = level
         self.formula = formula
-        self.parents = []
+        self.parents = parents
         self.conflict = conflict
 
 
@@ -24,20 +24,20 @@ class ImplicationGraph:
         self.nodes.append(node)
 
     def getParents(self, formula, varName):
-        if varName:
-            return [node for node in self.nodes if node.varName is not varName and node.varName in formula.variables]
-        return [node for node in self.nodes if node.varName in formula.variables]
+        parents = [node for node in self.nodes if not node.varName == varName and node.varName in formula.variables]
+        return parents
+        
 
     def addNode(self, value, formula, varName=None, conflict=False):
         if conflict:
             varName = "__conflict__"
-
         parents = self.getParents(formula, varName)
         if len(parents) == 0:
             level = 0
         else:
             level = max([parent.level for parent in parents])
-        node = Node(varName, value, level, conflict)
+        node = Node(varName, value, level, parents=parents,
+                    conflict=conflict, formula=formula)
         self.nodes.append(node)
 
     def backjump(self, level):
@@ -64,9 +64,9 @@ class ImplicationGraph:
                         queue.put(parent)
                         pushed[parent.varName]
 
-        nodeScore = {node.vvarName: 0 for node in self.nodes}
+        nodeScore = {node.varName: 0 for node in self.nodes}
         queue.put(conflictNode)
-        nodeScore[conflictNode] = 1
+        nodeScore[conflictNode.varName] = 1
         while not queue.empty():
             node = queue.get()
             parentScore = nodeScore[node.varName] / \
@@ -77,7 +77,7 @@ class ImplicationGraph:
                     nodeScore[parent.varName] += parentScore
                     if relevantChildren[parent.varName] == 0:
                         if nodeScore[parent.varName] == 1:
-                            return parent.varName
+                            return parent
                         queue.put(parent)
 
         return min([var for var in nodeScore.keys if var is not conflictNode.varName and nodeScore[var] == 1])

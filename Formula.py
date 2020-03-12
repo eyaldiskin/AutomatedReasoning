@@ -198,15 +198,15 @@ class Formula():
         varSet = set()
         for index, literal in reversed(list(enumerate(self.formulas))):
             if literal.type is FT.VAR:
-                if literal.name in varSet:
+                if literal.getName() in varSet:
                     del self.formulas[index]
                 else:
-                    varSet.add(literal.name)
+                    varSet.add(literal.getName())
             else:
-                if literal.formulas[0].name in varSet:
+                if literal.formulas[0].getName() in varSet:
                     del self.formulas[index]
                 else:
-                    varSet.add(literal.formulas[0].name)
+                    varSet.add(literal.formulas[0].getName())
 
     def preprocess(self):
         self.toTseitlin()
@@ -217,7 +217,7 @@ class Formula():
 
     def applyAssignment(self, assignment: dict):
         if self.type is FT.VAR:
-            return assignment[self.name]
+            return assignment[self.getName()]
         if self.type is FT.NEG:
             return not self.formulas[0].applyAssignment(assignment)
         if self.type is FT.AND:
@@ -242,7 +242,7 @@ class Formula():
 
     def toString(self):
         if self.type is FT.VAR:
-            return self.name
+            return self.getName()
 
         string = self.type.name + "("
         first = True
