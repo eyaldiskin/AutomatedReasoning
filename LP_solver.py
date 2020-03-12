@@ -385,6 +385,9 @@ class equstion:
         description += ' '+str(self.const_value)
         return description
 
+    def __eq__(self, other):
+        return self.repr_norm() == other.repr_norm()
+
     def repr_norm(self):
         if self.const_value == 0:
             return self.__repr__()
@@ -428,8 +431,9 @@ class Arithmatics_solver:
     def __init__(self):
         pass
 
-    def parse_equations(self, strings):
-        return [equstion(string) for string in strings]
+    def parse(self, string):
+        eq = equstion(string)
+        return eq, eq.repr_norm()
 
     def _convert_constraints_to_matrix(self, true_constraints, false_constraints):
         variables_pool = set()
@@ -458,7 +462,7 @@ class Arithmatics_solver:
 
         return (A,b,c, variables_pool)
 
-    def T_conflict(self, true_constraints, false_constraints, strategy=BLAND, debug_flag=False):
+    def conflict(self, true_constraints, false_constraints, strategy=BLAND, debug_flag=False):
         #only look for feasible assumption
 
         A, b, c, var_pool = self._convert_constraints_to_matrix(true_constraints, false_constraints)
@@ -481,7 +485,7 @@ class Arithmatics_solver:
 
         return result
 
-    def T_propagate(self,true_constraints, false_constraints, unknown_constraints, strategy=BLAND, debug_flag=False):
+    def propagate(self,true_constraints, false_constraints, unknown_constraints, strategy=BLAND, debug_flag=False):
 
         result = []
 
@@ -509,7 +513,7 @@ class Arithmatics_solver:
 
         return result
 
-    def T_explain(self, conflict, eq_list, dif_list, eq_levels, dif_levels):
+    def explain(self, conflict, eq_list, dif_list, eq_levels, dif_levels):
         return conflict
 
 
@@ -520,7 +524,7 @@ def main():
 
     #parse:
     equation_strings = ['-x_1 + x_2 <= -1','-2x_1 +2x_2 <= -2', '-2x_1 -2x_2 <= -6', '-x_1 + 4x_2 <= x_1']
-    equations = AS.parse_equations(equation_strings)
+    equations = [AS.parse(eq)[0] for eq in equation_strings]
 
     for e in equations:
         print('inner data: ', e)
@@ -530,20 +534,20 @@ def main():
 
 
     # T-conflict
-    e_true_str = ['x <= 5']
-    e_false_str = ['x <= 6']
+    e_true_str = 'x <= 5'
+    e_false_str = 'x <= 6'
 
-    e_true = AS.parse_equations(e_true_str)
-    e_false = AS.parse_equations(e_false_str)
+    e_true = [AS.parse(e_true_str)[0]]
+    e_false = [AS.parse(e_false_str)[0]]
 
-    res = AS.T_conflict(e_true, e_false, BLAND, False)
+    res = AS.conflict(e_true, e_false, BLAND, False)
     print('conflicting equations:')
     print(res)
     print('---------------')
 
     # T-propagate
     #lets use the same equations. e_true stays the same, e_false will be given as unknown
-    res = AS.T_propagate(e_true,[], e_false, BLAND,False)
+    res = AS.propagate(e_true,[], e_false, BLAND,False)
     print('new assignments:')
     print(res)
 

@@ -2,14 +2,16 @@ import unittest
 from Formula import *
 from SMT import *
 from TUF import *
+import LP_solver as LP
+from LP_solver import Arithmatics_solver as AS
 
 
 class TestStringMethods(unittest.TestCase):
 
     def test_parse_one_var_no_theory(self):
-        a = Formula(FT.VAR, varName="a", data="a")
+        formula = Formula(FT.VAR, varName="a", data="a")
         from_str = Parse_SMT.parse("a", lambda x: (x, x))
-        self.assertTrue(areEqualFormulas(a, from_str))
+        self.assertTrue(formula == from_str)
 
     def test_parse_mixed_structure_no_theory1(self):
         s = "~[a||[b==[c>>d]]]&&~[[d>>c]>>[~a&&b]]"
@@ -19,7 +21,7 @@ class TestStringMethods(unittest.TestCase):
         d = Formula(FT.VAR, varName="d", data="d")
         formula = -(a | (Formula(FT.IFF, [b, d <= c]))) & -((-a & b) <= (c <= d))
         from_str = Parse_SMT.parse(s, lambda x: (x, x))
-        self.assertTrue(areEqualFormulas(formula, from_str))
+        self.assertTrue(formula == from_str)
 
     def test_parse_mixed_structure_no_theory2(self):
         s = "~[[a||[b==[c>>d]]]&&~[[d>>c]>>[~a&&b]]]"
@@ -29,7 +31,7 @@ class TestStringMethods(unittest.TestCase):
         d = Formula(FT.VAR, varName="d", data="d")
         formula = -((a | (Formula(FT.IFF, [b, d <= c]))) & -((-a & b) <= (c <= d)))
         from_str = Parse_SMT.parse(s, lambda x: (x, x))
-        self.assertTrue(areEqualFormulas(formula, from_str))
+        self.assertTrue(formula == from_str)
 
     def test_parse_TUF(self):
         s = "[[~f(x)=b]&&x=f(b)]||b=f(x)"
@@ -41,7 +43,19 @@ class TestStringMethods(unittest.TestCase):
         eq1 = Formula(FT.VAR, varName="f(x)=b", data=UFData(UFType.PRED, "=", [fx, b]))
         eq2 = Formula(FT.VAR, varName="x=f(b)", data=UFData(UFType.PRED, "=", [x, fb]))
         formula = ((-eq1) & eq2) | eq1
-        self.assertTrue(formula)
+        self.assertTrue(formula == from_str)
+        for var in formula.variables:
+            self.assertTrue(formula.varFinder[var].data == from_str.varFinder[var].data)
+
+    def test_parse_LP(self):
+        s = "[-x_1+x_2<=-1 && -2x_1+2x_2<=-2]||[-2x_1-2x_2<=-6 && -x_1+4x_2<=x_1]"
+        from_str = Parse_SMT.parse(s, AS().parse)
+        eq1 = Formula(FT.VAR, varName="+ (-1.0x_1) + (1.0x_2) <=  -1.0", data=LP.equstion("-x_1+x_2<=-1"))
+        eq2 = Formula(FT.VAR, varName="+ (-1.0x_1) + (1.0x_2) <=  -1.0", data=LP.equstion("-2x_1+2x_2<=-2"))
+        eq3 = Formula(FT.VAR, varName="+ (-0.3333333333333333x_1) + (-0.3333333333333333x_2) <=  -1.0", data=LP.equstion("-2x_1-2x_2<=-6"))
+        eq4 = Formula(FT.VAR, varName="+ (-2.0x_1) + (4.0x_2) <=  0.0", data=LP.equstion("-x_1+4x_2<=x_1"))
+        formula = (eq1 & eq2) | (eq3 & eq4)
+        self.assertTrue(formula == from_str)
         for var in formula.variables:
             self.assertTrue(formula.varFinder[var].data == from_str.varFinder[var].data)
 
