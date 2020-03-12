@@ -124,12 +124,13 @@ class CDCL:
         self.graph.backjump(level)
         self.level = level
         self.partialAssignment = {var: self.partialAssignment[var] for var in self.partialAssignment if var in [
-            node.getName() for node in self.graph.nodes]}
+            node.varName for node in self.graph.nodes]}
         self.satisfied = [False] * len(self.formula.formulas)
         # create satisfied list
-        for var, val in self.partialAssignment:
+        for var in self.partialAssignment:
+            val = self.partialAssignment[var]
             if val:
-                for index in self.clauseFinder[self.formula.varFinder("var")]:
+                for index in self.clauseFinder[self.formula.varFinder[var]]:
                     self.satisfied[index] = True
             else:
                 for index in self.clauseFinder[Formula(FT.NEG, [self.formula.varFinder("var")])]:

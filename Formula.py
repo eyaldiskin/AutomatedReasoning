@@ -116,6 +116,9 @@ class Formula():
             formula.pushAndEliminateNegations()
 
     def distributeOrOverAnd(self):
+        for formula in self.formulas:
+            formula.distributeOrOverAnd()
+        
         if self.type == FT.OR:
             for index, formula in enumerate(self.formulas):
                 if formula.type is FT.AND:
@@ -128,8 +131,9 @@ class Formula():
                         self.formulas = [
                             Formula(FT.AND, formulas=self.formulas) | inner for inner in formula.formulas]
                     break
-        for formula in self.formulas:
-            formula.distributeOrOverAnd()
+                
+        
+        
 
     def toTseitlin(self):
         if self.isLiteral():
@@ -161,10 +165,13 @@ class Formula():
         self.type = FT.AND
         self.formulas = tseitlinFormula.formulas
         self.variables = tseitlinFormula.variables
+        print(self.toString())
         for formula in self.formulas:
             formula.toCNF()
         self.varFinder = tseitlinFormula.varFinder
+        print(self.toString())
         self.flatten()
+        print()
 
     def isRedundantFormula(self):
         """
