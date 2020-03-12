@@ -166,4 +166,16 @@ class CDCL:
                 self._VSIDSDivideScores()
         return None
 
+    def assign(self, variable, value):
+        self.partialAssignment[variable.getName()] = value
+        self._updateWatchLiterals(variable)
+        if not value:
+            variable = -variable
+        for index in self.clauseFinder[variable]:
+            self.satisfied[index] = True
+
+    def learnConflict(self, conflictClause):
+        self._learn(conflictClause)
+        self._backjump(self.graph.getSecondLargestLevel(conflictClause))
+
 # TODO - add "assign" and "learnConflict" for SMT
