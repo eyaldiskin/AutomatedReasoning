@@ -9,14 +9,6 @@ DANTZIG = 1
 LU_FACT_SIZE_LIMIT = 500
 EPSILON = 10**(-20)
 
-# equations consts
-EQ = '='
-NEQ = '!='
-GT = '>'
-GEQ = '>='
-LT = '<'
-LEQ = '<='
-
 VARIABLE_PATTERN = re.compile('[\-]?\d*\.?\d*[_A-z]+\d*')
 CONST_PATTERN = re.compile('[\-]?\d*\.?\d+')
 PROPOSITION_PATTERN = re.compile('[!=><]{1,2}')
@@ -205,7 +197,7 @@ class LP_solver:
         #if possible- just use the 0 assignment and finish
         if min(self.b) >= 0:
             self.X_B_star = self.b[:].astype(float)
-            return True
+            return (self,True)
 
         #if it's a non-trivial issue- solve the auxilery problem
         else:
@@ -238,8 +230,8 @@ class LP_solver:
 
             #exctract feasible solution for self
             if 0 in auxiliary.X_B and auxiliary.X_B_star[np.where(auxiliary.X_B==0)] != 0 :
-                print('no feasible solution found')
-                return False
+                self._debug_print('no feasible solution found', debug_flag)
+                return (auxiliary,False)
 
             else:
                 self.X_B = auxiliary.X_B - 1
@@ -254,14 +246,14 @@ class LP_solver:
                 self._debug_print(('################# auxiliary problem solved ###########################'),
                                   debug_flag)
                 if debug_flag: self.print_inner_state()
-                return True
+                return (auxiliary,True)
 
 
     def solve(self, debug_flag,strategy, stop_on_zero=False):
 
         #make sure we start from an initial feasible assignment
         if self.X_B_star is None:
-            if not self.set_initial_feasible_solution(debug_flag, strategy):
+            if not self.set_initial_feasible_solution(debug_flag, strategy)[1]:
                 return
 
         iteration_number = 1
@@ -280,7 +272,7 @@ class LP_solver:
             self._debug_print(('entering_var= ', entering_var), debug_flag)
 
             if np.isinf(entering_var):
-                print('optimal result was found')
+                self._debug_print(('optimal result was found'), debug_flag)
                 return
 
             # calculate leaving var
@@ -345,9 +337,7 @@ class equstion:
 
     def __init__(self, formula):
         self.variables = {}
-        self.const_value = None
-        self.proposition = None
-        self.slack_use = False
+        self.const_value = 0.0
 
         #parse formula string
         tokens = GENERAL_TOKEN_PATTERN.findall(re.sub('\s','',formula))
@@ -376,8 +366,6 @@ class equstion:
 
 
             elif CONST_PATTERN.match(t):
-                if self.const_value is None:
-                    self.const_value = 0
 
                 if proposition_seen_flag: #we are on the right side of the equation. flip sign.
                     self.const_value += float(t)
@@ -385,54 +373,55 @@ class equstion:
                     self.const_value -= float(t)
 
             elif PROPOSITION_PATTERN.match(t):
-                if proposition_seen_flag: #two propositions detected. invalid formula
-                    self.proposition = None
-
-                    return
-
+                assert (proposition_seen_flag == False)
+                assert (t == '<=')
                 proposition_seen_flag = True
-                self.proposition = t
 
     def __repr__(self):
         description = ''
-        for key, value in self.variables.items():
+        for key, value in sorted(self.variables.items()):
             description += '+ ('+str(value)+key+') '
-        if self.slack_use:
-            description += '+slack '
-        description += self.proposition + ' '
+        description += '<= '
         description += ' '+str(self.const_value)
         return description
 
-    def check_validity(self):
-        if not bool(self.variables):
-            return False
-        if self.const_value is None:
-            return False
-        if self.proposition is None:
-            return False
+    def repr_norm(self):
+        if self.const_value == 0:
+            return self.__repr__()
 
-        return True
+        description = ''
+        for key, value in sorted(self.variables.items()):
+            description += '+ ('+str(value/abs(self.const_value))+key+') '
+        description += '<= '
+        description += ' '+str(self.const_value/abs(self.const_value))
+        return description
+
+    def check_validity(self):
+        assert (bool(self.variables))
 
     def get_all_vars_names(self):
         return set(self.variables.keys())
 
-    def get_slack_status(self):
-        return self.slack_use
-
-    def get_matrix_format(self, vars_order):
-        assert self.proposition == LEQ
-
-        row_len = len(vars_order) +1
+    def as_matrix_row(self, vars_order):
+        row_len = len(vars_order)
         single_row = np.zeros(row_len)
 
         for i in range(len(vars_order)):
             if vars_order[i] in self.variables:
                 single_row[i] = self.variables[vars_order[i]]
 
-        if self.slack_use:
-            single_row[-1] = 1
+        return (single_row, self.const_value)
 
-        return (single_row,self.const_value)
+    def negation_as_matrix_row(self, vars_order):
+        row_len = len(vars_order)
+        single_row = np.zeros(row_len)
+
+        for i in range(len(vars_order)):
+            if vars_order[i] in self.variables:
+                single_row[i] = -self.variables[vars_order[i]]
+
+        return (single_row, -self.const_value -EPSILON)
+
 
 
 class Arithmatics_solver:
@@ -442,72 +431,20 @@ class Arithmatics_solver:
     def parse_equations(self, strings):
         return [equstion(string) for string in strings]
 
-    def _copy_equation(self,old_equation):
-        new_equation = equstion('')
-        for key in old_equation.variables:
-            new_equation.variables[key] = old_equation.variables[key]
-
-        new_equation.const_value = old_equation.const_value
-        new_equation.proposition = old_equation.proposition
-        new_equation.slack_use = old_equation.slack_use
-
-        return new_equation
-
-    def _flip_equation_sides(self,equation):
-        for key in equation.variables:
-            equation.variables[key] = -equation.variables[key]
-
-        equation.const_value = -equation.const_value
-
-    def _geq_to_leq(self, old_equation):
-        assert old_equation.proposition == GEQ
-
-        new_equation = self._copy_equation(old_equation)
-        self._flip_equation_sides(new_equation)
-
-        new_equation.proposition = LEQ
-        return new_equation
-
-    def _eq_to_geq_and_leq(self, old_equation):
-        assert old_equation.proposition == EQ
-        new_GT_equation = self._copy_equation(old_equation)
-        new_LT_equation = self._copy_equation(old_equation)
-
-        new_GT_equation.proposition = GEQ
-        new_LT_equation.proposition = LEQ
-
-        return (new_GT_equation, new_LT_equation)
-
-    def _lt_to_eq(self,old_equation):
-        assert old_equation.proposition == LT
-
-        new_equation = self._copy_equation(old_equation)
-
-        new_equation.proposition = EQ
-        new_equation.slack_use = True
-
-        return new_equation
-
-    def _neq_to_slack_leqs(self,old_equation):
-        assert old_equation.proposition == NEQ
-        new_equation1 = self._copy_equation(old_equation)
-        new_equation1.proposition = LEQ
-        new_equation1.slack_use = True
-
-        new_equation2 = self._copy_equation(new_equation1)
-        self._flip_equation_sides(new_equation2)
-
-        return (new_equation1, new_equation2)
-
-    def _convert_constraints_to_matrix(self, constraints):
+    def _convert_constraints_to_matrix(self, true_constraints, false_constraints):
         variables_pool = set()
-        slack_used = False
-        for c in constraints:
+        for c in true_constraints:
             variables_pool = variables_pool.union(c.get_all_vars_names())
-            slack_used = slack_used or c.get_slack_status()
+        for c in false_constraints:
+            variables_pool = variables_pool.union(c.get_all_vars_names())
 
-        variables_pool = list(variables_pool)
-        matrix_data = [c.get_matrix_format(variables_pool) for c in constraints]
+        variables_list = list(variables_pool)
+        variables_list = sorted(variables_list)
+        matrix_data = []
+
+        matrix_data += [c.as_matrix_row(variables_list) for c in true_constraints]
+        matrix_data += [c.negation_as_matrix_row(variables_list) for c in false_constraints]
+
 
         A = np.array([tup[0] for tup in matrix_data])
         b = np.array([tup[1] for tup in matrix_data])
@@ -517,68 +454,99 @@ class Arithmatics_solver:
         A = np.append(A, np.identity(m), axis=1)
         A.shape = (m,m+n)
 
-        c = np.zeros(m+n)
-        c[len(variables_pool)] = 1
+        c = np.ones(m+n)
 
-        return (A,b,c, slack_used, variables_pool)
+        return (A,b,c, variables_pool)
 
-    def answer_LEQ_conflict(self, constraints, strategy=BLAND, debug_flag=False):
-
+    def T_conflict(self, true_constraints, false_constraints, strategy=BLAND, debug_flag=False):
         #only look for feasible assumption
-        A, b, c, slack_used, var_pool = self._convert_constraints_to_matrix(constraints)
+
+        A, b, c, var_pool = self._convert_constraints_to_matrix(true_constraints, false_constraints)
 
         lp = LP_solver(A,b,c)
-        lp.solve(debug_flag,strategy)
+        lp_stat, succ_stat = lp.set_initial_feasible_solution(debug_flag,strategy)
 
-        assign , obj =lp.get_current_assignment()
+        if succ_stat == True:
+            return None
 
-        if obj is None:
-            return False
+        #resurn all equation involed in conflict- has a zero slack variable.
+        result = []
+        assignment, _ = lp_stat.get_current_assignment()
+        assignment = assignment[len(var_pool)+1:]
 
-        print(var_pool)
-        print(assign[:len(var_pool)])
-        print('obj: '+str(obj))
+        constraints = true_constraints + false_constraints
+        for i in range(len(assignment)):
+            if assignment[i] == 0:
+                result += [[constraints[i],i>=len(true_constraints)]]
 
-        if slack_used:
-            return obj>0
-        else:
-            return True
+        return result
 
+    def T_propagate(self,true_constraints, false_constraints, unknown_constraints, strategy=BLAND, debug_flag=False):
 
-    # def answer_propagate(self, constraints, unknown):
-    #     # for each new condition, does it intersect the polytope?
-    #     pass
-    #
-    # def answer_explain(self, low_level_constraints, latest_constraint):
-    #     # maximize latest constraint
-    #     # return slack vars with 0 assignment
-    #     pass
+        result = []
+
+        for u in unknown_constraints:
+            #try positive u
+            A, b, c, var_pool = self._convert_constraints_to_matrix(true_constraints+[u], false_constraints)
+
+            lp = LP_solver(A, b, c)
+            lp_stat, succ_stat = lp.set_initial_feasible_solution(debug_flag, strategy)
+
+            if succ_stat == False:
+                result += [[u,False]]
+
+            #try negative u
+
+        for u in unknown_constraints:
+            # try positive u
+            A, b, c, var_pool = self._convert_constraints_to_matrix(true_constraints, false_constraints + [u])
+
+            lp = LP_solver(A, b, c)
+            lp_stat, succ_stat = lp.set_initial_feasible_solution(debug_flag, strategy)
+
+            if succ_stat == False:
+                result += [[u, True]]
+
+        return result
+
+    def T_explain(self, conflict, eq_list, dif_list, eq_levels, dif_levels):
+        return conflict
 
 
 def main():
+
+    #exapmles for using arithmatics solver:
     AS = Arithmatics_solver()
 
-    equation_strings = ['-x_1 + x_2 <= -1', '-2x_1 -2x_2 <= -6', '-x_1 + 4x_2 <= 2']
-
-    #SMT: parse these equations!
-
+    #parse:
+    equation_strings = ['-x_1 + x_2 <= -1','-2x_1 +2x_2 <= -2', '-2x_1 -2x_2 <= -6', '-x_1 + 4x_2 <= x_1']
     equations = AS.parse_equations(equation_strings)
+
     for e in equations:
-        print(e)
+        print('inner data: ', e)
+        print('name: ', e.repr_norm()) # naming is done by ordering variables lexicographically and dividing by abs(b)
+        print('------------')
 
-    #SMT: good. now take these equationd, do T_conflict.
 
-    A, b, c, slack_stat, vars_pool = AS._convert_constraints_to_matrix(equations)
-    print(A)
-    print(b)
-    print(c)
-    print(vars_pool)
 
-    print('------------------------')
+    # T-conflict
+    e_true_str = ['x <= 5']
+    e_false_str = ['x <= 6']
 
-    ans = AS.answer_LEQ_conflict(equations,BLAND)
+    e_true = AS.parse_equations(e_true_str)
+    e_false = AS.parse_equations(e_false_str)
 
-    print(ans)
+    res = AS.T_conflict(e_true, e_false, BLAND, False)
+    print('conflicting equations:')
+    print(res)
+    print('---------------')
+
+    # T-propagate
+    #lets use the same equations. e_true stays the same, e_false will be given as unknown
+    res = AS.T_propagate(e_true,[], e_false, BLAND,False)
+    print('new assignments:')
+    print(res)
+
 
 if __name__ == "__main__":
     main()
