@@ -9,35 +9,6 @@ class TUF:
         self.union_find = UnionFind()
         self.equations = []
 
-    # def _get_symbols(self, formula: Formula):
-    #     if formula.type == Formula.FT.VAR:
-    #         if getattr(formula, "data", None):
-    #             self._insert_symbol(formula.data)
-    #         return
-    #     for clause in formula.formulas:
-    #         if clause.type == Formula.FT.VAR:
-    #             if getattr(clause, "data", None):
-    #                 self._insert_symbol(clause.data)
-    #         else:
-    #             self._get_symbols(clause)
-    #
-    # def _insert_symbol(self, data: TData):
-    #     name = data.name
-    #     type = data.type
-    #     for t in TType:
-    #         if t != type and name in self.symbols[t]:
-    #             raise
-    #     if type == TType.VAR:
-    #         self.symbols[type][name] = name
-    #         return
-    #     arity = len(data.arguments)
-    #     if name in self.symbols[type] and self.symbols[type][name] != arity:
-    #         raise
-    #     else:
-    #         self.symbols[type][name] = arity
-    #     for argument in data.arguments:
-    #         self._insert_symbol(argument)
-
     def _set_eq(self, eq_list):
         self.union_find.reset()
         for equation in eq_list:
@@ -49,7 +20,8 @@ class TUF:
         for inequality in dif_list:
             args = inequality.arguments
             if self.union_find.are_equal(args[0], args[1]):
-                conflict = [[equation, False] for equation in eq_list]
+                imp_eq_list = self._find_implication(inequality, eq_list)
+                conflict = [[equation, False] for equation in imp_eq_list]
                 conflict.append([inequality, True])
                 return conflict
         return None
@@ -92,28 +64,33 @@ class TUF:
             return [[x, True] for x in implication_list]
         return None
 
-    def explain(self, conflict, eq_list, dif_list, eq_levels, dif_levels):  # todo finish
+    def explain(self, conflict, eq_list, dif_list, eq_levels, dif_levels):
         new_conflict = []
         temp_conflict = None
         remove_level = -1
         to_remove = None
+        conflict_cpy = list(conflict)
+        conflict_lvls = []
         for constrain in conflict:
             data, assignment = constrain
             if assignment:
                 level = dif_levels[dif_list.index(data)]
+                conflict_lvls.append(level)
                 if level > remove_level:
                     temp_conflict = self._explain_true(data, level, eq_list, eq_levels, dif_list, dif_levels)
             else:
                 level = eq_levels[eq_list.index(data)]
+                conflict_lvls.append(level)
                 if level > remove_level:
                     temp_conflict = self._explain_false(data, level, dif_list, dif_levels)
             if temp_conflict:
                 to_remove = constrain
+                remove_level = level
                 new_conflict = temp_conflict
-        if to_remove:
-            conflict.remove(to_remove)
-            conflict.extend([var for var in new_conflict if var not in conflict])
-        return conflict
+        if remove_level >= sorted(conflict_lvls)[-2]:
+            conflict_cpy.remove(to_remove)
+            conflict_cpy.extend([var for var in new_conflict if var not in conflict])
+        return conflict_cpy
 
     def propagate(self, eq_list, dif_list, unknown_list):
         self._set_eq(eq_list)

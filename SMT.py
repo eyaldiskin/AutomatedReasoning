@@ -44,21 +44,45 @@ class SMT:
         var_true, var_false = self._get_assigned_vars()
         return self.theory.conflict(var_true, var_false)
 
-    def propagate(self):
+    def _propagate(self):
         while True:
             var_true, var_false, var_unknown = self._get_part_assignment()
             new_vars = self.theory.propagate(var_true, var_false, var_unknown)
             if not new_vars:
                 break
-            for data in new_vars:
+            for var in new_vars:
+                data, assignment = var
                 var_name = self._get_var_name_by_data(data)
                 # todo insert to cdcl...
 
     def _explain(self, conflict):
-        pass
+        var_true, var_false = self._get_assigned_vars()
+        # todo get levels
+        true_lvls = []
+        false_lvls = []
+        new_conflict = self.theory.explain(conflict, var_true, var_false, true_lvls, false_lvls)
+        while new_conflict != conflict:
+            conflict = new_conflict
+            new_conflict = self.theory.explain(conflict, var_true, var_false, true_lvls, false_lvls)
+        return new_conflict
 
-    def solve(self):
-        pass
+    def solve(self, decisions_per_round=5):
+        solution = False
+        if not decisions_per_round:
+            decisions_per_round -= 1
+        while True:
+            conflict = self._conflict()
+            if conflict:
+                conflict = self._explain(conflict)
+                # todo finish branch
+            elif not solution:
+                self._propagate()
+            else:
+                pass
+                # todo return the assignment
+            solution = self.cdcl.solve(decisions_per_round)
+            if solution is False:
+                return False
 
 #
 # from TUF import *
