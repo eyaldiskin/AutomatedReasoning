@@ -141,10 +141,22 @@ class TestStringMethods(unittest.TestCase):
         self.assertTrue(smt.solve())
 
     def test_LP_conflict(self):
-        s = "x_1+x_2+2x_3<=4&&2x_1+3x_3<=5&&2x_1+x_2+3x_3<=7&&-3x_1-2x_2-4x_3<=-10"
+        s = "x_1+x_2+2x_3<=4&&2x_1+3x_3<=5&&2x_1+x_2+3x_3<=7&&-3x_1-2x_2-4x_3<=-11"
         theory = AS()
         smt = SMT(s, theory)
         self.assertTrue(not smt.solve())
+
+    def test_LP_solve1(self):
+        s = "x_1+x_2+2x_3<=4&&[2x_1+3x_3<=5||2x_1+x_2+3x_3<=7]&&-3x_1-2x_2-4x_3<=-11"
+        theory = AS()
+        smt = SMT(s, theory)
+        self.assertTrue(smt.solve())
+
+    def test_LP_solve2(self):
+        s = "x_1+x_2+2x_3<=4&&2x_1+3x_3<=5&&2x_1+x_2+3x_3<=7&&-3x_1-2x_2-4x_3<=-10.5"
+        theory = AS()
+        smt = SMT(s, theory)
+        self.assertTrue(smt.solve())
 
 
 if __name__ == '__main__':

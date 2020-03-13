@@ -9,7 +9,7 @@ class CDCL:
         self.formula = formula
         self.partialAssignment = {}
         self.clauseFinder = {}
-        self.watchLiterals = [[]] * len(formula.formulas)
+        self.watchLiterals = [[] for _ in range(len(formula.formulas))]
         self.VSIDSScores = {}
         self.satisfied = [False] * len(formula.formulas)
         self.graph = ImplicationGraph()
@@ -132,7 +132,7 @@ class CDCL:
                 for index in self.clauseFinder[Formula(FT.NEG, [self.formula.varFinder[var]])]:
                     self.satisfied[index] = True
         # update watch literals
-        self.watchLiterals = [[]] * len(self.formula.formulas)
+        self.watchLiterals = [[] for _ in range(len(self.formula.formulas))]
         for index, clause in enumerate(self.formula.formulas):
             if not self.satisfied[index]:
                 shuffle(clause.formulas)
