@@ -131,7 +131,7 @@ class CDCL:
                 for index in self.clauseFinder[self.formula.varFinder[var]]:
                     self.satisfied[index] = True
             else:
-                for index in self.clauseFinder[Formula(FT.NEG, [self.formula.varFinder("var")])]:
+                for index in self.clauseFinder[Formula(FT.NEG, [self.formula.varFinder[var]])]:
                     self.satisfied[index] = True
         # update watch literals
         self.watchLiterals = [[] for i in range(len(self.formula.formulas))]
