@@ -17,7 +17,7 @@ class Node:
 class ImplicationGraph:
 
     def __init__(self):
-        self.nodes = []  # TODO - maybe keep sorted?
+        self.nodes = []
 
     def addRoot(self, varName, value, level):
         node = Node(varName, value, level)
@@ -62,7 +62,7 @@ class ImplicationGraph:
                     relevantChildren[parent.varName] += 1
                     if not pushed[parent.varName]:
                         queue.put(parent)
-                        pushed[parent.varName]
+                        pushed[parent.varName] = True
 
         nodeScore = {node.varName: 0 for node in self.nodes}
         queue.put(conflictNode)
@@ -80,7 +80,7 @@ class ImplicationGraph:
                             return parent
                         queue.put(parent)
 
-        return min([var for var in nodeScore.keys if var is not conflictNode.varName and nodeScore[var] == 1])
+        return min([var for var in nodeScore.keys() if var is not conflictNode.varName and nodeScore[var] == 1])
 
     def getSecondLargestLevel(self, conflict):
         return secondLargest(
@@ -96,13 +96,13 @@ class ImplicationGraph:
     def resolveConflict(self, UIP: Node):
         conflict = self.nodes[-1].formula
         if UIP.varName not in conflict.variables:
-                for node in reversed(self.nodes):
-                    if node.varName == UIP.varName:        
-                        break
-                    if node.varName in conflict.variables:
-                        conflict = Formula.deduce(
-                            conflict, node.formula, node.varName)
+            for node in reversed(self.nodes):
+                if node.varName == UIP.varName:
+                    break
+                if node.varName in conflict.variables:
+                    conflict = Formula.deduce(
+                        conflict, node.formula, node.varName)
 
         backJumpLevel = secondLargest(
             list(set([node.level for node in self.nodes if node.varName in conflict.variables])))
-        return (conflict, backJumpLevel)
+        return conflict, backJumpLevel

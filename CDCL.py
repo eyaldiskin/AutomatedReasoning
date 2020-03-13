@@ -9,7 +9,7 @@ class CDCL:
         self.formula = formula
         self.partialAssignment = {}
         self.clauseFinder = {}
-        self.watchLiterals = [[] for i in range(len(formula.formulas))]
+        self.watchLiterals = [[]] * len(formula.formulas)
         self.VSIDSScores = {}
         self.satisfied = [False] * len(formula.formulas)
         self.graph = ImplicationGraph()
@@ -50,8 +50,6 @@ class CDCL:
                            literal.type == FT.VAR, self.level)
         self._updateWatchLiterals(literal)
 
-    # TODO - understand when to call
-
     def _VSIDSDivideScores(self):
         self.VSIDSScores = {k: self.VSIDSScores[k]/2 for k in self.VSIDSScores}
 
@@ -76,7 +74,7 @@ class CDCL:
                 literal = watchers[0]
                 selected = index
                 break
-        # maybe move this to _decide?
+
         if literal is None:
             for index, clause in enumerate(self.formula.formulas):
                 if not self.satisfied[index]:
@@ -95,7 +93,6 @@ class CDCL:
 
         self._updateWatchLiterals(literal)
 
-        # probably needs oprimizing
         clause: Formula
         for clause in self.formula.formulas:
             if clause.applyPartialAssignment(self.partialAssignment) is False:
@@ -109,7 +106,7 @@ class CDCL:
                 self.watchLiterals[index] = [
                     watcher for watcher in watchers if not watcher.getName() == literalSelected.getName()]
                 for literal in self.formula[index].formulas:
-                    if literal.getName() not in self.partialAssignment.keys() and not literal in watchers:
+                    if literal.getName() not in self.partialAssignment.keys() and literal not in watchers:
                         self.watchLiterals[index].append(literal)
                         break
 
@@ -135,7 +132,7 @@ class CDCL:
                 for index in self.clauseFinder[Formula(FT.NEG, [self.formula.varFinder[var]])]:
                     self.satisfied[index] = True
         # update watch literals
-        self.watchLiterals = [[] for i in range(len(self.formula.formulas))]
+        self.watchLiterals = [[]] * len(self.formula.formulas)
         for index, clause in enumerate(self.formula.formulas):
             if not self.satisfied[index]:
                 shuffle(clause.formulas)
@@ -185,5 +182,3 @@ class CDCL:
     def learnConflict(self, conflictClause):
         self._learn(conflictClause)
         self._backjump(self.graph.getSecondLargestLevel(conflictClause))
-
-# TODO - add "assign" and "learnConflict" for SMT

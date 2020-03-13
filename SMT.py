@@ -54,7 +54,6 @@ class SMT:
             if not new_vars:
                 break
             for data, assignment in new_vars:
-                # data, assignment = assigned_var
                 var_name = self._get_var_name_by_data(data)
                 var = self.cdcl.formula.varFinder[var_name]
                 self.cdcl.assign(var, assignment)
@@ -102,44 +101,49 @@ class SMT:
                 self._propagate()
             else:
                 assignment = []
-                for var in self.cdcl.partialAssignment.keys():
+                cdcl_assign = self.cdcl.getAssignment()
+                for var in cdcl_assign.keys():
                     data = self.cdcl.formula.varFinder[var].data
-                    value = self.cdcl.partialAssignment[var]
                     if data:
-                        assignment.append([str(data), value])
+                        assignment.append([str(data), cdcl_assign[var]])
                 return assignment
             solution = self.cdcl.solve(decisions_per_round)
             if solution is False:
                 return False
 
-# from Formula import *
-# from TUF import *
-# import LP_solver as LP
+from Formula import *
+from TUF import *
+import LP_solver as LP
 from LP_solver import Arithmatics_solver as AS
 
-# if __name__ == "__main__":
-#     theory = TUF()
-#     parse = Parse_SMT.parse
-#     data1 = parse("a=b", theory.parse).data
-#     data2 = parse("b=c", theory.parse).data
-#     data3 = parse("g(f(a), b)=g(f(c), c)", theory.parse).data
-#     data4 = parse("g(f(a), b)=g(f(c), d)", theory.parse).data
-#     union_find = theory.union_find
-#     arg1 = data1.arguments
-#     arg2 = data2.arguments
-#     arg3 = data3.arguments
-#     arg4 = data4.arguments
-#     union_find.add_equation(arg1[0], arg1[1])
-#     union_find.add_equation(arg2[0], arg2[1])
-#     print(union_find.are_equal(arg3[0], arg3[1]))
-#     print(not union_find.are_equal(arg4[0], arg4[1]))
-#     union_find.save()
-#     union_find.reset()
-#     print(not union_find.are_equal(arg1[0], arg1[1]))
-#     union_find.load()
-#     print(union_find.are_equal(arg2[0], arg2[1]))
-# s = "[-x_1+x_2<=-1 && -2x_1+2x_2<=-2]||[-2x_1-2x_2<=-6 && -x_1+4x_2<=x_1]"
+# s = "x_1<=1&&x_2<=1&&x_3<=1&&-x_1-x_2-x_3<=-5"
 # theory = AS()
 # smt = SMT(s, theory)
 # print(smt.solve())
-# print(s)
+# print("hi")
+
+
+class BaseTheory:
+    def __init__(self):
+        pass
+
+    def conflict(self, eq_list, dif_list):
+        if not dif_list:
+            return [[x, False] for x in eq_list]
+        return None
+
+    def explain(self, conflict, eq_list, dif_list, eq_levels, dif_levels):
+        return conflict
+
+    def propagate(self, eq_list, dif_list, unknown_list):
+        return None
+
+    def parse(self, formula: str):
+        return formula, formula
+
+
+s = "a&&b&&c&&d"
+theory = BaseTheory()
+smt = SMT(s, theory)
+print(smt.solve())
+print("hi")

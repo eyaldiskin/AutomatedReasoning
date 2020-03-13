@@ -52,7 +52,8 @@ class TestStringMethods(unittest.TestCase):
         from_str = Parse_SMT.parse(s, AS().parse)
         eq1 = Formula.Formula(FT.VAR, varName="+ (-1.0x_1) + (1.0x_2) <=  -1.0", data=LP.equstion("-x_1+x_2<=-1"))
         eq2 = Formula.Formula(FT.VAR, varName="+ (-1.0x_1) + (1.0x_2) <=  -1.0", data=LP.equstion("-2x_1+2x_2<=-2"))
-        eq3 = Formula.Formula(FT.VAR, varName="+ (-0.3333333333333333x_1) + (-0.3333333333333333x_2) <=  -1.0", data=LP.equstion("-2x_1-2x_2<=-6"))
+        name3 = "+ (-0.3333333333333333x_1) + (-0.3333333333333333x_2) <=  -1.0"
+        eq3 = Formula.Formula(FT.VAR, varName=name3, data=LP.equstion("-2x_1-2x_2<=-6"))
         eq4 = Formula.Formula(FT.VAR, varName="+ (-2.0x_1) + (4.0x_2) <=  0.0", data=LP.equstion("-x_1+4x_2<=x_1"))
         formula = (eq1 & eq2) | (eq3 & eq4)
         self.assertTrue(formula == from_str)
@@ -115,15 +116,36 @@ class TestStringMethods(unittest.TestCase):
         solution = [['a=b', True], ['f(a)=f(c)', True], ['b=c', False], ['g(f(a))=g(f(c))', True]]
         self.assertTrue(smt.solve() == solution)
 
-    def test_TUF_conflict(self):
+    def test_TUF_conflict1(self):
+        s = "mul(a,add(abs(b),c))=d&&~mul(b,add(abs(a),c))=d&&a=b"
+        theory = TUF()
+        smt = SMT(s, theory)
+        self.assertTrue(not smt.solve())
+
+    def test_TUF_conflict2(self):
         s = "g(a)=c&&[~f(g(a))=f(c)||g(a)=d]&&~c=d"
         theory = TUF()
         smt = SMT(s, theory)
-        solution = [['a=b', True], ['f(a)=f(c)', True], ['b=c', False], ['g(f(a))=g(f(c))', True]]
-        self.assertTrue(smt.solve() == solution)
+        self.assertTrue(not smt.solve())
 
-    def test_LP(self):
+    def test_TUF_conflict3(self):
+        s = "f(f(f(a)))=a&&f(f(f(f(f(a)))))=a&&~f(a)=a"
+        theory = TUF()
+        smt = SMT(s, theory)
+        self.assertTrue(not smt.solve())
+
+    def test_basic_LP(self):
         s = "[-x_1+x_2<=-1 && -2x_1+2x_2<=-2]||[-2x_1-2x_2<=-6 && -x_1+4x_2<=x_1]"
         theory = AS()
         smt = SMT(s, theory)
         self.assertTrue(smt.solve())
+
+    def test_LP_conflict(self):
+        s = "x_1+x_2+2x_3<=4&&2x_1+3x_3<=5&&2x_1+x_2+3x_3<=7&&-3x_1-2x_2-4x_3<=-10"
+        theory = AS()
+        smt = SMT(s, theory)
+        self.assertTrue(not smt.solve())
+
+
+if __name__ == '__main__':
+    unittest.main()

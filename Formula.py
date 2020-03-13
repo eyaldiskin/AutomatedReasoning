@@ -11,7 +11,7 @@ class FT(Enum):
     IFF = 6
 
 
-class Formula():
+class Formula:
     def __init__(self, type: FT,
                  formulas: list = None, varName=None, data=None, tseitlin=False):
         if type is None:
@@ -19,7 +19,7 @@ class Formula():
         self.type = type
         self.data = data
         self.tseitlinVar = None
-        if(type == FT.VAR):
+        if type == FT.VAR:
             self.name = varName
             self.variables = {varName}
             self.tseitlin = tseitlin
@@ -92,11 +92,12 @@ class Formula():
             self.type = FT.AND
             self.formulas = [self.formulas[0] <= self.formulas[1],
                              self.formulas[1] <= self.formulas[0]]
+        formula: Formula
         for formula in self.formulas:
             formula.eliminateImplications()
         if self.type is FT.IMPLIES:
             self.type = FT.OR
-            self.formulas = [-self.formulas[0], self.formulas[1]]
+            self.formulas = [- self.formulas[0], self.formulas[1]]
 
     def pushAndEliminateNegations(self):
         if self.type is FT.NEG:
@@ -233,7 +234,6 @@ class Formula():
             return not (first and not second)
 
     def applyPartialAssignment(self, assignment: dict):
-        # will probably be more efficient if variables and assignment.keys are sorted
         if len(self .variables - assignment.keys()) > 0:
             return True
         return self.applyAssignment(assignment)
@@ -255,8 +255,6 @@ class Formula():
             string += formula.toString()
         string += ")"
         return string
-
-    # TODO : might be excessive
 
     def __eq__(self, other):
         f1 = self

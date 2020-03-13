@@ -26,17 +26,21 @@ if __name__ == "__main__":
         raise ValueError('Theory name mismatch')
     else:
         theory = None
-    formula = input(GET_FORMULA_TXT)
-    while formula == "help":
-        print(HELP)
+    finish = False
+    while not finish:
         formula = input(GET_FORMULA_TXT)
-    if theory:
-        smt = SMT.SMT(formula, theory)
-        print(smt.solve())
-    else:
-        sat = CDCL.CDCL(Parse_SMT.parse(formula))
-        sol = sat.solve()
-        if sol:
-            print(sat.getAssignment())
+        if formula == "help":
+            print(HELP)
+            continue
+        if theory:
+            smt = SMT.SMT(formula, theory)
+            print(smt.solve())
         else:
-            print(False)
+            sat = CDCL.CDCL(Parse_SMT.parse(formula))
+            sol = sat.solve()
+            if sol:
+                print(sat.getAssignment())
+            else:
+                print(False)
+        if input("do you want to solve another formula using the same theory?(Y/N)\n") != "Y":
+            finish = True
