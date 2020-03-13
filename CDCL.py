@@ -56,7 +56,6 @@ class CDCL:
         self.VSIDSScores = {k: self.VSIDSScores[k]/2 for k in self.VSIDSScores}
 
     def _learn(self, clause):
-        print("learned "+clause.toString())
         self.formula.append(clause)
         self.watchLiterals.append([])
         self.satisfied.append(False)
@@ -117,11 +116,9 @@ class CDCL:
 
     def _explain(self):
         uip = self.graph.findUIP(self.level)
-        print("UIP " + uip.varName)
         return self.graph.resolveConflict(uip)
 
     def _backjump(self, level):
-        print("backjump to " + str(level))
         self.graph.backjump(level)
         self.level = level
         self.partialAssignment = {var: self.partialAssignment[var] for var in self.partialAssignment if var in [
