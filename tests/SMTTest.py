@@ -107,3 +107,10 @@ class TestStringMethods(unittest.TestCase):
         theory = TUF()
         smt = SMT(s, theory)
         self.assertTrue(not smt.solve())
+
+    def test_TUF_solve(self):
+        s = "a=b&&f(a)=f(c)&&~b=c&&g(f(a))=g(f(c))"
+        theory = TUF()
+        smt = SMT(s, theory)
+        solution = [['a=b', True], ['f(a)=f(c)', True], ['b=c', False], ['g(f(a))=g(f(c))', True]]
+        self.assertTrue(smt.solve() == solution)

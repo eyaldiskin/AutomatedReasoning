@@ -4,9 +4,9 @@ import LP_solver
 import Parse_SMT
 import CDCL
 
-GET_THEORY_TXT = "please insert the theory you want to use:\n"\
-                 "\tSAT for SAT solver with no theory,"\
-                 "\tTUF for uninterpreted functions theory or"\
+GET_THEORY_TXT = "please insert the theory you want to use:"\
+                 "\n\tSAT for SAT solver with no theory,"\
+                 "\n\tTUF for uninterpreted functions theory or"\
                  "\n\tLP for arithmetic solver.\n"
 
 GET_FORMULA_TXT = "\nplease insert the formula you want to solve, for help type 'help'.\n"
