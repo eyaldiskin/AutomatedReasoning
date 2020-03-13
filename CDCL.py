@@ -141,7 +141,8 @@ class CDCL:
                 shuffle(clause.formulas)
                 relevant = [lit for lit in clause.formulas if lit.getName(
                 ) not in self.partialAssignment.keys()]
-                if len(relevant) >0:
+                if len(relevant) > 0:
+
                     self.watchLiterals[index].append(relevant[0])
                     if len(relevant) > 1:
                         self.watchLiterals[index].append(relevant[1])
