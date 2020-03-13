@@ -82,6 +82,7 @@ class CDCL:
                 if not self.satisfied[index]:
                     if clause.applyPartialAssignment(self.partialAssignment) is False:
                         self.graph.addNode(None, clause, conflict=True)
+                        return False
             return True
         print("propagated " + literal.toString())
         self.partialAssignment[literal.getName()] = literal.type is FT.VAR
@@ -140,9 +141,10 @@ class CDCL:
                 shuffle(clause.formulas)
                 relevant = [lit for lit in clause.formulas if lit.getName(
                 ) not in self.partialAssignment.keys()]
-                self.watchLiterals[index].append(relevant[0])
-                if len(relevant) > 1:
-                    self.watchLiterals[index].append(relevant[1])
+                if len(relevant) > 0:
+                    self.watchLiterals[index].append(relevant[0])
+                    if len(relevant) > 1:
+                        self.watchLiterals[index].append(relevant[1])
 
     def solve(self, steps=-1, onlyPropagate=False):
         while steps != 0:
