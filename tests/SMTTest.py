@@ -114,3 +114,16 @@ class TestStringMethods(unittest.TestCase):
         smt = SMT(s, theory)
         solution = [['a=b', True], ['f(a)=f(c)', True], ['b=c', False], ['g(f(a))=g(f(c))', True]]
         self.assertTrue(smt.solve() == solution)
+
+    def test_TUF_conflict(self):
+        s = "g(a)=c&&[~f(g(a))=f(c)||g(a)=d]&&~c=d"
+        theory = TUF()
+        smt = SMT(s, theory)
+        solution = [['a=b', True], ['f(a)=f(c)', True], ['b=c', False], ['g(f(a))=g(f(c))', True]]
+        self.assertTrue(smt.solve() == solution)
+
+    def test_LP(self):
+        s = "[-x_1+x_2<=-1 && -2x_1+2x_2<=-2]||[-2x_1-2x_2<=-6 && -x_1+4x_2<=x_1]"
+        theory = AS()
+        smt = SMT(s, theory)
+        self.assertTrue(smt.solve())

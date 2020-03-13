@@ -43,7 +43,9 @@ class SMT:
 
     def _conflict(self):
         var_true, var_false = self._get_assigned_vars()
-        return self.theory.conflict(var_true, var_false)
+        if var_true or var_false:
+            return self.theory.conflict(var_true, var_false)
+        return None
 
     def _propagate(self):
         while True:
@@ -113,7 +115,7 @@ class SMT:
 # from Formula import *
 # from TUF import *
 # import LP_solver as LP
-# from LP_solver import Arithmatics_solver as AS
+from LP_solver import Arithmatics_solver as AS
 
 # if __name__ == "__main__":
 #     theory = TUF()
@@ -136,3 +138,8 @@ class SMT:
 #     print(not union_find.are_equal(arg1[0], arg1[1]))
 #     union_find.load()
 #     print(union_find.are_equal(arg2[0], arg2[1]))
+# s = "[-x_1+x_2<=-1 && -2x_1+2x_2<=-2]||[-2x_1-2x_2<=-6 && -x_1+4x_2<=x_1]"
+# theory = AS()
+# smt = SMT(s, theory)
+# print(smt.solve())
+# print(s)
