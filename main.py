@@ -35,4 +35,8 @@ if __name__ == "__main__":
         print(smt.solve())
     else:
         sat = CDCL.CDCL(Parse_SMT.parse(formula))
-        print(sat.solve())
+        sol = sat.solve()
+        if sol:
+            print(sat.getAssignment())
+        else:
+            print(False)
