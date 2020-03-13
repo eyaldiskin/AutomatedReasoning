@@ -95,7 +95,6 @@ class ImplicationGraph:
 
     def resolveConflict(self, UIP: Node):
         conflict = self.nodes[-1].formula
-        print(conflict.toString())
         if UIP.varName not in conflict.variables:
                 for node in reversed(self.nodes):
                     if node.varName == UIP.varName:        
@@ -103,7 +102,6 @@ class ImplicationGraph:
                     if node.varName in conflict.variables:
                         conflict = Formula.deduce(
                             conflict, node.formula, node.varName)
-                        print(conflict.toString())
 
         backJumpLevel = secondLargest(
             list(set([node.level for node in self.nodes if node.varName in conflict.variables])))

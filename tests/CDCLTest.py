@@ -68,6 +68,31 @@ class TestCDCL(unittest.TestCase):
         self.assertEqual(
             solver.partialAssignment["var2"], solver.partialAssignment["var3"])
 
+    def test_CDCL_solve_5(self):
+        form = (self.var0 | self.var1) & (self.var2 | self.var3 | self.var4) & (
+            (self.var1 & self.var3) | (self.var4 <= self.var0 <= self.var1)) & (-self.var0 | -self.var1 | -self.var2) & (self.var4 | self.var0) & (-self.var4 |-self.var3)
+        solver = CDCL(form)
+        out = solver.solve()
+        print()
+
+    def test_CDCL_solve_6(self):
+        form = (self.var0 | self.var1) & (self.var2 | self.var3 | self.var4) & (
+            (self.var1 & self.var3) | (self.var4 <= self.var0 <= self.var1)) & (-self.var0 | -self.var1 | -self.var2) & (self.var4 | self.var0) & (-self.var4 |-self.var3)& (-self.var0|self.var3) 
+        solver = CDCL(form)
+        out = solver.solve()
+        print()
+
+    def test_CDCL_100_vars(self):
+        form = Formula(FT.VAR,varName="var0")
+        for i in range(1,100):
+            form = form & Formula(FT.VAR,varName="var"+str(i))
+        solver = CDCL(form)
+        out = solver.solve()
+        assignment = solver.getAssignment()
+        print()
+
+        
+
 
 if __name__ == '__main__':
     unittest.main()

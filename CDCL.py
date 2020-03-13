@@ -146,7 +146,6 @@ class CDCL:
                 self.watchLiterals[index].append(relevant[0])
                 if len(relevant) > 1:
                     self.watchLiterals[index].append(relevant[1])
-        print()
 
     def solve(self, steps=-1, onlyPropagate=False):
         while steps != 0:
@@ -169,6 +168,12 @@ class CDCL:
             if self.totalSteps % 5 == 0:
                 self._VSIDSDivideScores()
         return None
+
+    def getAssignment(self):
+        for var in self.formula.variables:
+            if var not in self.partialAssignment:
+                self.partialAssignment[var] = True
+        return {k: self.partialAssignment[k] for k in self.partialAssignment if not self.formula.varFinder[k].tseitlin}
 
     def assign(self, variable, value):
         self.partialAssignment[variable.getName()] = value

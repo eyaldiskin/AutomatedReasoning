@@ -287,7 +287,6 @@ class Formula():
 
     @classmethod
     def deduce(cls, f1, f2, literal):
-        print("remove ruedunt")
         f3 = Formula(FT.OR, formulas=[lit for lit in f1.formulas if lit.getName(
         ) != literal]+[lit for lit in f2.formulas if lit.getName() != literal])
         f3.removeRedundantLiterals()
