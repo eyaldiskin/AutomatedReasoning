@@ -9,27 +9,27 @@ from LP_solver import Arithmatics_solver as AS
 class TestStringMethods(unittest.TestCase):
 
     def test_parse_one_var_no_theory(self):
-        formula = Formula(FT.VAR, varName="a", data="a")
+        formula = Formula.Formula(FT.VAR, varName="a", data="a")
         from_str = Parse_SMT.parse("a", lambda x: (x, x))
         self.assertTrue(formula == from_str)
 
     def test_parse_mixed_structure_no_theory1(self):
         s = "~[a||[b==[c>>d]]]&&~[[d>>c]>>[~a&&b]]"
-        a = Formula(FT.VAR, varName="a", data="a")
-        b = Formula(FT.VAR, varName="b", data="b")
-        c = Formula(FT.VAR, varName="c", data="c")
-        d = Formula(FT.VAR, varName="d", data="d")
-        formula = -(a | (Formula(FT.IFF, [b, d <= c]))) & -((-a & b) <= (c <= d))
+        a = Formula.Formula(FT.VAR, varName="a", data="a")
+        b = Formula.Formula(FT.VAR, varName="b", data="b")
+        c = Formula.Formula(FT.VAR, varName="c", data="c")
+        d = Formula.Formula(FT.VAR, varName="d", data="d")
+        formula = -(a | (Formula.Formula(FT.IFF, [b, d <= c]))) & -((-a & b) <= (c <= d))
         from_str = Parse_SMT.parse(s, lambda x: (x, x))
         self.assertTrue(formula == from_str)
 
     def test_parse_mixed_structure_no_theory2(self):
         s = "~[[a||[b==[c>>d]]]&&~[[d>>c]>>[~a&&b]]]"
-        a = Formula(FT.VAR, varName="a", data="a")
-        b = Formula(FT.VAR, varName="b", data="b")
-        c = Formula(FT.VAR, varName="c", data="c")
-        d = Formula(FT.VAR, varName="d", data="d")
-        formula = -((a | (Formula(FT.IFF, [b, d <= c]))) & -((-a & b) <= (c <= d)))
+        a = Formula.Formula(FT.VAR, varName="a", data="a")
+        b = Formula.Formula(FT.VAR, varName="b", data="b")
+        c = Formula.Formula(FT.VAR, varName="c", data="c")
+        d = Formula.Formula(FT.VAR, varName="d", data="d")
+        formula = -((a | (Formula.Formula(FT.IFF, [b, d <= c]))) & -((-a & b) <= (c <= d)))
         from_str = Parse_SMT.parse(s, lambda x: (x, x))
         self.assertTrue(formula == from_str)
 
@@ -40,8 +40,8 @@ class TestStringMethods(unittest.TestCase):
         fx = UFData(UFType.FOO, "f", [x])
         b = UFData(UFType.VAR, "b")
         fb = UFData(UFType.FOO, "f", [b])
-        eq1 = Formula(FT.VAR, varName="f(x)=b", data=UFData(UFType.PRED, "=", [fx, b]))
-        eq2 = Formula(FT.VAR, varName="x=f(b)", data=UFData(UFType.PRED, "=", [x, fb]))
+        eq1 = Formula.Formula(FT.VAR, varName="f(x)=b", data=UFData(UFType.PRED, "=", [fx, b]))
+        eq2 = Formula.Formula(FT.VAR, varName="x=f(b)", data=UFData(UFType.PRED, "=", [x, fb]))
         formula = ((-eq1) & eq2) | eq1
         self.assertTrue(formula == from_str)
         for var in formula.variables:
@@ -50,10 +50,10 @@ class TestStringMethods(unittest.TestCase):
     def test_parse_LP(self):
         s = "[-x_1+x_2<=-1 && -2x_1+2x_2<=-2]||[-2x_1-2x_2<=-6 && -x_1+4x_2<=x_1]"
         from_str = Parse_SMT.parse(s, AS().parse)
-        eq1 = Formula(FT.VAR, varName="+ (-1.0x_1) + (1.0x_2) <=  -1.0", data=LP.equstion("-x_1+x_2<=-1"))
-        eq2 = Formula(FT.VAR, varName="+ (-1.0x_1) + (1.0x_2) <=  -1.0", data=LP.equstion("-2x_1+2x_2<=-2"))
-        eq3 = Formula(FT.VAR, varName="+ (-0.3333333333333333x_1) + (-0.3333333333333333x_2) <=  -1.0", data=LP.equstion("-2x_1-2x_2<=-6"))
-        eq4 = Formula(FT.VAR, varName="+ (-2.0x_1) + (4.0x_2) <=  0.0", data=LP.equstion("-x_1+4x_2<=x_1"))
+        eq1 = Formula.Formula(FT.VAR, varName="+ (-1.0x_1) + (1.0x_2) <=  -1.0", data=LP.equstion("-x_1+x_2<=-1"))
+        eq2 = Formula.Formula(FT.VAR, varName="+ (-1.0x_1) + (1.0x_2) <=  -1.0", data=LP.equstion("-2x_1+2x_2<=-2"))
+        eq3 = Formula.Formula(FT.VAR, varName="+ (-0.3333333333333333x_1) + (-0.3333333333333333x_2) <=  -1.0", data=LP.equstion("-2x_1-2x_2<=-6"))
+        eq4 = Formula.Formula(FT.VAR, varName="+ (-2.0x_1) + (4.0x_2) <=  0.0", data=LP.equstion("-x_1+4x_2<=x_1"))
         formula = (eq1 & eq2) | (eq3 & eq4)
         self.assertTrue(formula == from_str)
         for var in formula.variables:
@@ -100,7 +100,7 @@ class TestStringMethods(unittest.TestCase):
         s = "a=b&&b=c&&c=a"
         theory = TUF()
         smt = SMT(s, theory)
-        self.assertTrue(smt.solve() == "") # todo by solve format
+        self.assertTrue(smt.solve() == [['a=b', True], ['b=c', True], ['c=a', True]])
 
     def test_basic_TUF_conflict(self):
         s = "a=b&&b=c&&~c=a"

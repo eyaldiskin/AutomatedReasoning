@@ -1,5 +1,5 @@
 from CDCL import CDCL
-# import Formula
+import Formula
 import Parse_SMT
 
 
@@ -36,7 +36,8 @@ class SMT:
     def _get_var_name_by_data(self, data):
         formula = self.cdcl.formula
         for var_name in formula.variables:
-            if data == formula.varFinder[var_name].data:
+            var_data = formula.varFinder[var_name].data
+            if var_data and data == var_data:
                 return var_name
         return None
 
@@ -50,21 +51,40 @@ class SMT:
             new_vars = self.theory.propagate(var_true, var_false, var_unknown)
             if not new_vars:
                 break
-            for var in new_vars:
-                data, assignment = var
+            for data, assignment in new_vars:
+                # data, assignment = assigned_var
                 var_name = self._get_var_name_by_data(data)
-                # todo insert to cdcl...
+                var = self.cdcl.formula.varFinder[var_name]
+                self.cdcl.assign(var, assignment)
 
     def _explain(self, conflict):
         var_true, var_false = self._get_assigned_vars()
-        # todo get levels
-        true_lvls = []
-        false_lvls = []
+        names_true = [self._get_var_name_by_data(data) for data in var_true]
+        names_false = [self._get_var_name_by_data(data) for data in var_false]
+        nodes = self.cdcl.graph.nodes
+        true_lvls = [-1] * len(var_true)
+        false_lvls = [-1] * len(var_false)
+        for node in nodes:
+            if node.varName in names_true:
+                true_lvls[names_true.index(node.varName)] = node.level
+            elif node.varName in names_false:
+                false_lvls[names_false.index(node.varName)] = node.level
+
         new_conflict = self.theory.explain(conflict, var_true, var_false, true_lvls, false_lvls)
         while new_conflict != conflict:
             conflict = new_conflict
             new_conflict = self.theory.explain(conflict, var_true, var_false, true_lvls, false_lvls)
         return new_conflict
+
+    def _conflict_to_formula(self, conflict):
+        literals = []
+        for data, assignment in conflict:
+            var_name = self._get_var_name_by_data(data)
+            var = self.cdcl.formula.varFinder[var_name]
+            if not assignment:
+                var = -var
+            literals.append(var)
+        return Formula.Formula(Formula.FT.OR, literals)
 
     def solve(self, decisions_per_round=5):
         solution = False
@@ -74,18 +94,27 @@ class SMT:
             conflict = self._conflict()
             if conflict:
                 conflict = self._explain(conflict)
-                # todo finish branch
+                formula = self._conflict_to_formula(conflict)
+                self.cdcl.learnConflict(formula)
             elif not solution:
                 self._propagate()
             else:
-                pass
-                # todo return the assignment
+                assignment = []
+                for var in self.cdcl.partialAssignment.keys():
+                    data = self.cdcl.formula.varFinder[var].data
+                    value = self.cdcl.partialAssignment[var]
+                    if data:
+                        assignment.append([str(data), value])
+                return assignment
             solution = self.cdcl.solve(decisions_per_round)
             if solution is False:
                 return False
 
-#
+# from Formula import *
 # from TUF import *
+# import LP_solver as LP
+# from LP_solver import Arithmatics_solver as AS
+
 # if __name__ == "__main__":
 #     theory = TUF()
 #     parse = Parse_SMT.parse
